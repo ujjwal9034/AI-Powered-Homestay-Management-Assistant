@@ -1,7 +1,8 @@
 # AI-Powered Homestay Management Assistant
 
 ## One Line Description
-An AI-powered platform that helps homestay owners manage guest reviews, customer queries, and tourist assistance.
+An AI-powered platform that helps homestay owners manage guest reviews, 
+customer queries, and tourist assistance.
 
 ## Tech Stack
 Frontend: React JS
@@ -21,3 +22,6 @@ AI: OpenAI API
 
 ## Setup
 Coming Soon
+
+## Week 2 Update
+Frontend skeleton completed.
