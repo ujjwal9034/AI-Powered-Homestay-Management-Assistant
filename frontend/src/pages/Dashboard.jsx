@@ -1,4 +1,9 @@
+/**
+ * Dashboard — Main management view with stats, reviews, quick actions, and AI insights.
+ * Full dark mode and responsive layout support.
+ */
 import { useState } from 'react'
+import { useTheme } from '../context/ThemeContext'
 
 const stats = [
   { label: 'Total Reviews', value: '1,284', change: '+12%', up: true, icon: '⭐' },
@@ -51,6 +56,7 @@ const quickActions = [
 
 export default function Dashboard() {
   const [expandedReview, setExpandedReview] = useState(null)
+  const { darkMode } = useTheme()
 
   return (
     <section className="py-8 sm:py-12">
@@ -58,19 +64,19 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900">
+            <h1 className={`text-2xl sm:text-3xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Dashboard
             </h1>
-            <p className="text-gray-500 mt-1 text-sm">
+            <p className={`mt-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               Welcome back! Here's your homestay overview for today.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-xs font-medium">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               AI Active
             </span>
-            <button className="px-4 py-2 rounded-lg bg-primary-50 text-primary-600 text-sm font-medium hover:bg-primary-100 transition-colors">
+            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${darkMode ? 'bg-primary-900/30 text-primary-400 hover:bg-primary-900/50' : 'bg-primary-50 text-primary-600 hover:bg-primary-100'}`}>
               Generate Report
             </button>
           </div>
@@ -81,20 +87,22 @@ export default function Dashboard() {
           {stats.map(({ label, value, change, up, icon }) => (
             <div
               key={label}
-              className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 hover:shadow-md transition-shadow duration-200"
+              className={`rounded-2xl border p-5 sm:p-6 hover:shadow-md transition-shadow duration-200 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-2xl">{icon}</span>
                 <span
                   className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    up ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                    up
+                      ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                      : darkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
                   }`}
                 >
                   {change}
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-heading font-bold text-gray-900">{value}</div>
-              <div className="text-xs text-gray-500 mt-1 font-medium">{label}</div>
+              <div className={`text-2xl sm:text-3xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{value}</div>
+              <div className={`text-xs mt-1 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>{label}</div>
             </div>
           ))}
         </div>
@@ -102,15 +110,15 @@ export default function Dashboard() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Reviews list */}
           <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="font-heading font-semibold text-gray-900">Recent Reviews</h2>
-                <span className="text-xs text-gray-400 font-medium">Last 24 hours</span>
+            <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              <div className={`px-6 py-5 border-b flex items-center justify-between ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                <h2 className={`font-heading font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Recent Reviews</h2>
+                <span className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Last 24 hours</span>
               </div>
 
-              <div className="divide-y divide-gray-100">
+              <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
                 {recentReviews.map((review) => (
-                  <div key={review.id} className="p-6 hover:bg-gray-50/50 transition-colors">
+                  <div key={review.id} className={`p-6 transition-colors ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -118,8 +126,8 @@ export default function Dashboard() {
                             {review.guest.charAt(0)}
                           </div>
                           <div>
-                            <h3 className="text-sm font-semibold text-gray-900">{review.guest}</h3>
-                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{review.guest}</h3>
+                            <div className={`flex items-center gap-2 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                               <span>{review.platform}</span>
                               <span>·</span>
                               <span>{review.date}</span>
@@ -133,7 +141,7 @@ export default function Dashboard() {
                             <svg
                               key={i}
                               className={`w-4 h-4 ${
-                                i < review.rating ? 'text-amber-400' : 'text-gray-200'
+                                i < review.rating ? 'text-amber-400' : darkMode ? 'text-gray-600' : 'text-gray-200'
                               }`}
                               fill="currentColor"
                               viewBox="0 0 20 20"
@@ -143,7 +151,7 @@ export default function Dashboard() {
                           ))}
                         </div>
 
-                        <p className="text-sm text-gray-600 leading-relaxed">{review.text}</p>
+                        <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.text}</p>
 
                         {/* AI Suggestion expandable */}
                         {review.aiSuggestion && (
@@ -152,7 +160,7 @@ export default function Dashboard() {
                               onClick={() =>
                                 setExpandedReview(expandedReview === review.id ? null : review.id)
                               }
-                              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer"
                             >
                               <span>🤖</span>
                               {expandedReview === review.id ? 'Hide' : 'View'} AI Suggestion
@@ -173,13 +181,13 @@ export default function Dashboard() {
                                 expandedReview === review.id ? 'max-h-48 opacity-100 mt-3' : 'max-h-0 opacity-0'
                               }`}
                             >
-                              <div className="rounded-xl bg-primary-50/50 border border-primary-100 p-4 text-sm text-gray-700 leading-relaxed">
+                              <div className={`rounded-xl border p-4 text-sm leading-relaxed ${darkMode ? 'bg-primary-900/20 border-primary-800 text-gray-300' : 'bg-primary-50/50 border-primary-100 text-gray-700'}`}>
                                 {review.aiSuggestion}
                                 <div className="flex items-center gap-2 mt-3">
-                                  <button className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 transition-colors">
+                                  <button className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer">
                                     Use This Reply
                                   </button>
-                                  <button className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-100 transition-colors">
+                                  <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                                     Edit
                                   </button>
                                 </div>
@@ -193,8 +201,8 @@ export default function Dashboard() {
                       <span
                         className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
                           review.status === 'replied'
-                            ? 'bg-green-50 text-green-600'
-                            : 'bg-amber-50 text-amber-600'
+                            ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                            : darkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
                         }`}
                       >
                         {review.status === 'replied' ? 'Replied' : 'Pending'}
@@ -209,18 +217,18 @@ export default function Dashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="font-heading font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              <h2 className={`font-heading font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h2>
               <div className="grid grid-cols-2 gap-3">
                 {quickActions.map(({ label, icon }) => (
                   <button
                     key={label}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-primary-50 hover:border-primary-200 transition-all duration-200 group"
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 group cursor-pointer ${darkMode ? 'border-gray-700 bg-dark-900/50 hover:bg-primary-900/20 hover:border-primary-700' : 'border-gray-100 bg-gray-50/50 hover:bg-primary-50 hover:border-primary-200'}`}
                   >
                     <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
                       {icon}
                     </span>
-                    <span className="text-xs font-medium text-gray-600 group-hover:text-primary-700 text-center">
+                    <span className={`text-xs font-medium text-center ${darkMode ? 'text-gray-400 group-hover:text-primary-400' : 'text-gray-600 group-hover:text-primary-700'}`}>
                       {label}
                     </span>
                   </button>
@@ -229,8 +237,8 @@ export default function Dashboard() {
             </div>
 
             {/* AI Insights */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="font-heading font-semibold text-gray-900 mb-4">AI Insights</h2>
+            <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              <h2 className={`font-heading font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>AI Insights</h2>
               <div className="space-y-4">
                 {[
                   {
@@ -250,10 +258,10 @@ export default function Dashboard() {
                     key={text}
                     className={`rounded-xl p-4 text-sm leading-relaxed border ${
                       type === 'positive'
-                        ? 'bg-green-50/50 border-green-100 text-green-800'
+                        ? darkMode ? 'bg-green-900/20 border-green-800 text-green-300' : 'bg-green-50/50 border-green-100 text-green-800'
                         : type === 'warning'
-                        ? 'bg-amber-50/50 border-amber-100 text-amber-800'
-                        : 'bg-blue-50/50 border-blue-100 text-blue-800'
+                        ? darkMode ? 'bg-amber-900/20 border-amber-800 text-amber-300' : 'bg-amber-50/50 border-amber-100 text-amber-800'
+                        : darkMode ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50/50 border-blue-100 text-blue-800'
                     }`}
                   >
                     {text}

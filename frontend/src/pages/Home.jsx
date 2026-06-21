@@ -1,6 +1,11 @@
+/**
+ * Home — Landing page with Hero, Features, How It Works, Testimonials, and CTA.
+ * All sections support dark mode through conditional styling.
+ */
 import Hero from '../components/Hero'
 import FeatureCard from '../components/FeatureCard'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 
 const features = [
   {
@@ -45,6 +50,8 @@ const testimonials = [
 ]
 
 export default function Home() {
+  const { darkMode } = useTheme()
+
   return (
     <>
       <Hero />
@@ -53,16 +60,16 @@ export default function Home() {
       <section className="py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold tracking-wider uppercase mb-4">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 ${darkMode ? 'bg-primary-900/30 text-primary-400' : 'bg-primary-50 text-primary-600'}`}>
               Core Features
             </span>
-            <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900">
+            <h2 className={`text-3xl sm:text-4xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Everything You Need to{' '}
               <span className="bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent">
                 Run Your Homestay
               </span>
             </h2>
-            <p className="mt-4 text-gray-500 text-lg leading-relaxed">
+            <p className={`mt-4 text-lg leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               From managing guest reviews to offering intelligent tourist support — StayWise provides a complete AI-powered toolkit for modern homestay owners.
             </p>
           </div>
@@ -76,13 +83,13 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+      <section className={`py-20 ${darkMode ? 'bg-gradient-to-b from-dark-800/50 to-dark-900' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-accent-50 text-accent-600 text-xs font-semibold tracking-wider uppercase mb-4">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 ${darkMode ? 'bg-accent-900/30 text-accent-400' : 'bg-accent-50 text-accent-600'}`}>
               How It Works
             </span>
-            <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900">
+            <h2 className={`text-3xl sm:text-4xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Three Simple Steps
             </h2>
           </div>
@@ -109,8 +116,8 @@ export default function Home() {
                 <span className="absolute left-0 top-0 flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-white font-heading font-bold text-lg shadow-lg shadow-primary-500/20">
                   {step}
                 </span>
-                <h3 className="text-lg font-heading font-semibold text-gray-900 mb-2">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                <h3 className={`text-lg font-heading font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
+                <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{desc}</p>
               </div>
             ))}
           </div>
@@ -118,13 +125,13 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 sm:py-28 bg-white">
+      <section className="py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="inline-block px-3 py-1 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold tracking-wider uppercase mb-4">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 ${darkMode ? 'bg-primary-900/30 text-primary-400' : 'bg-primary-50 text-primary-600'}`}>
               Testimonials
             </span>
-            <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900">
+            <h2 className={`text-3xl sm:text-4xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Loved by Homestay Owners
             </h2>
           </div>
@@ -133,15 +140,15 @@ export default function Home() {
             {testimonials.map(({ quote, name, role }) => (
               <div
                 key={name}
-                className="rounded-2xl border border-gray-100 bg-gray-50/50 p-8 hover:shadow-lg transition-shadow duration-300"
+                className={`rounded-2xl border p-8 hover:shadow-lg transition-shadow duration-300 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-100 bg-gray-50/50'}`}
               >
-                <svg className="w-8 h-8 text-primary-300 mb-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-primary-300 dark:text-primary-600 mb-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311C9.591 11.689 11 13.166 11 15a3 3 0 1 1-6 0c0-.223.018-.44.053-.651l.001-.006Zm11 0C14.553 16.227 14 15 14 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311C20.591 11.689 22 13.166 22 15a3 3 0 1 1-6 0c0-.223.018-.44.053-.651l.001-.006Z" />
                 </svg>
-                <p className="text-gray-600 leading-relaxed text-sm mb-6">"{quote}"</p>
+                <p className={`leading-relaxed text-sm mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>"{quote}"</p>
                 <div>
-                  <p className="font-heading font-semibold text-gray-900 text-sm">{name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{role}</p>
+                  <p className={`font-heading font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{name}</p>
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{role}</p>
                 </div>
               </div>
             ))}

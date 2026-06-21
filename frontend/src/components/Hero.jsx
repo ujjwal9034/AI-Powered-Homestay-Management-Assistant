@@ -1,6 +1,13 @@
+/**
+ * Hero — Landing page hero section with gradient background, stats, and CTAs.
+ * The dark gradient naturally works in both light and dark mode.
+ */
 import { Link } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Hero() {
+  const { darkMode } = useTheme()
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900">
       {/* Decorative blobs */}
@@ -64,8 +71,8 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-gray-50 to-transparent" />
+      {/* Bottom gradient fade — adapts to theme */}
+      <div className={`absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t ${darkMode ? 'from-dark-900' : 'from-gray-50'} to-transparent`} />
     </section>
   )
 }

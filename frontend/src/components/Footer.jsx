@@ -1,3 +1,7 @@
+/**
+ * Footer — Site-wide footer with brand info, navigation links, and social icons.
+ * Supports dark mode with smooth transitions.
+ */
 import { Link } from 'react-router-dom'
 
 const footerLinks = [
@@ -6,7 +10,7 @@ const footerLinks = [
     links: [
       { label: 'Dashboard', to: '/dashboard' },
       { label: 'Features', to: '/' },
-      { label: 'Pricing', to: '/' },
+      { label: 'Components', to: '/components-demo' },
     ],
   },
   {

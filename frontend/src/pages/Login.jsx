@@ -1,15 +1,21 @@
+/**
+ * Login — Authentication page with sign-in/sign-up toggle.
+ * Full dark mode and responsive layout support.
+ */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false)
+  const { darkMode } = useTheme()
 
   return (
     <section className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       {/* Background decoration */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-primary-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-accent-100/30 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
+        <div className={`absolute top-0 right-0 w-[40rem] h-[40rem] rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 ${darkMode ? 'bg-primary-900/20' : 'bg-primary-100/40'}`} />
+        <div className={`absolute bottom-0 left-0 w-[30rem] h-[30rem] rounded-full blur-3xl translate-y-1/3 -translate-x-1/4 ${darkMode ? 'bg-accent-900/15' : 'bg-accent-100/30'}`} />
       </div>
 
       <div className="w-full max-w-md">
@@ -21,10 +27,10 @@ export default function Login() {
               StayWise
             </span>
           </Link>
-          <h1 className="mt-4 text-2xl font-heading font-bold text-gray-900">
+          <h1 className={`mt-4 text-2xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className={`mt-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {isSignUp
               ? 'Start managing your homestay with AI today'
               : 'Sign in to your homestay dashboard'}
@@ -32,43 +38,43 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-xl shadow-gray-200/50 p-8">
+        <div className={`rounded-2xl border backdrop-blur-xl shadow-xl p-8 ${darkMode ? 'border-gray-700 bg-dark-800/80 shadow-black/20' : 'border-gray-200 bg-white/80 shadow-gray-200/50'}`}>
           <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
             {isSignUp && (
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="name" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Full Name
                 </label>
                 <input
                   type="text"
                   id="name"
                   placeholder="Ujjwal Singh"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200"
+                  className={`w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500 dark:placeholder-gray-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`}
                 />
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="email" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Email Address
               </label>
               <input
                 type="email"
                 id="email"
                 placeholder="you@example.com"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200"
+                className={`w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500 dark:placeholder-gray-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="password" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Password
               </label>
               <input
                 type="password"
                 id="password"
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200"
+                className={`w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500 dark:placeholder-gray-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`}
               />
             </div>
 
@@ -79,9 +85,9 @@ export default function Login() {
                     type="checkbox"
                     className="w-4 h-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500/20"
                   />
-                  <span className="text-gray-600">Remember me</span>
+                  <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Remember me</span>
                 </label>
-                <button type="button" className="text-primary-600 font-medium hover:text-primary-700 transition-colors">
+                <button type="button" className="text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer">
                   Forgot password?
                 </button>
               </div>
@@ -89,7 +95,7 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
             >
               {isSignUp ? 'Create Account' : 'Sign In'}
             </button>
@@ -98,16 +104,16 @@ export default function Login() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className={`w-full border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`} />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-gray-400 font-medium">or continue with</span>
+              <span className={`px-3 font-medium ${darkMode ? 'bg-dark-800 text-gray-500' : 'bg-white text-gray-400'}`}>or continue with</span>
             </div>
           </div>
 
           {/* Social login */}
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+            <button className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors duration-200 cursor-pointer ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -128,7 +134,7 @@ export default function Login() {
               </svg>
               Google
             </button>
-            <button className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+            <button className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors duration-200 cursor-pointer ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .269.18.579.688.481C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
               </svg>
@@ -138,11 +144,11 @@ export default function Login() {
         </div>
 
         {/* Toggle */}
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className={`mt-6 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-primary-600 font-semibold hover:text-primary-700 transition-colors"
+            className="text-primary-600 dark:text-primary-400 font-semibold hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer"
           >
             {isSignUp ? 'Sign In' : 'Sign Up'}
           </button>
