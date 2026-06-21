@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Override Tailwind v4 dark variant to use class-based detection
+   instead of prefers-color-scheme. ThemeContext toggles .dark on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary-50: #eff8f4;
   --color-primary-100: #d0eade;
