@@ -1,18 +1,14 @@
 /**
  * Dashboard — Main management view with stats, reviews, quick actions, and AI insights.
  * Full dark mode and responsive layout support.
+ * Reviews are fetched from the Express backend via Axios.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { fetchReviews } from '../services/api'
 
-const stats = [
-  { label: 'Total Reviews', value: '1,284', change: '+12%', up: true, icon: '⭐' },
-  { label: 'Avg. Rating', value: '4.7', change: '+0.3', up: true, icon: '📊' },
-  { label: 'Response Rate', value: '96%', change: '+4%', up: true, icon: '💬' },
-  { label: 'Pending Replies', value: '8', change: '-3', up: false, icon: '📝' },
-]
-
-const recentReviews = [
+/* ── Fallback data (used when backend is unavailable) ────────────────────────── */
+const fallbackReviews = [
   {
     id: 1,
     guest: 'Sarah Mitchell',
@@ -57,6 +53,45 @@ const quickActions = [
 export default function Dashboard() {
   const [expandedReview, setExpandedReview] = useState(null)
   const { darkMode } = useTheme()
+
+  /* ── Fetch reviews from backend ──────────────────────────────────────────── */
+  const [recentReviews, setRecentReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      try {
+        setLoading(true)
+        const result = await fetchReviews()
+        setRecentReviews(result.data || [])
+        setError(null)
+      } catch (err) {
+        console.warn('Backend unavailable, using fallback data:', err.message)
+        setRecentReviews(fallbackReviews)
+        setError('Could not connect to backend — showing cached data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadReviews()
+  }, [])
+
+  /* ── Compute dynamic stats from fetched reviews ──────────────────────────── */
+  const totalReviews = recentReviews.length
+  const avgRating = totalReviews > 0
+    ? (recentReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
+    : '0.0'
+  const repliedCount = recentReviews.filter((r) => r.status === 'replied').length
+  const responseRate = totalReviews > 0 ? Math.round((repliedCount / totalReviews) * 100) : 0
+  const pendingCount = recentReviews.filter((r) => r.status === 'pending').length
+
+  const stats = [
+    { label: 'Total Reviews', value: totalReviews.toLocaleString(), change: '+12%', up: true, icon: '⭐' },
+    { label: 'Avg. Rating', value: avgRating, change: '+0.3', up: true, icon: '📊' },
+    { label: 'Response Rate', value: `${responseRate}%`, change: '+4%', up: true, icon: '💬' },
+    { label: 'Pending Replies', value: String(pendingCount), change: `-${pendingCount}`, up: false, icon: '📝' },
+  ]
 
   return (
     <section className="py-8 sm:py-12">
@@ -113,11 +148,35 @@ export default function Dashboard() {
             <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               <div className={`px-6 py-5 border-b flex items-center justify-between ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                 <h2 className={`font-heading font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Recent Reviews</h2>
-                <span className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Last 24 hours</span>
+                <span className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{error ? 'Offline mode' : `${recentReviews.length} reviews`}</span>
               </div>
 
+              {/* Error banner */}
+              {error && (
+                <div className={`mx-6 mt-4 px-4 py-3 rounded-xl text-sm flex items-center gap-2 ${darkMode ? 'bg-amber-900/20 border border-amber-800 text-amber-300' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                  <span>⚠️</span> {error}
+                </div>
+              )}
+
+              {/* Loading state */}
+              {loading && (
+                <div className="flex items-center justify-center py-16">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading reviews...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!loading && recentReviews.length === 0 && (
+                <div className="flex items-center justify-center py-16">
+                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No reviews found.</span>
+                </div>
+              )}
+
               <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                {recentReviews.map((review) => (
+                {!loading && recentReviews.map((review) => (
                   <div key={review.id} className={`p-6 transition-colors ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
