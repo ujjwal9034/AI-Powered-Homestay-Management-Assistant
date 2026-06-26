@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "guest": "Sarah Mitchell",
+    "platform": "Airbnb",
+    "rating": 5,
+    "text": "Absolutely loved our stay! The mountain views were breathtaking and the host was incredibly helpful with local recommendations.",
+    "date": "2 hours ago",
+    "status": "replied",
+    "aiSuggestion": null,
+    "createdAt": "2026-06-26T04:30:00.000Z"
+  },
+  {
+    "id": 2,
+    "guest": "James Park",
+    "platform": "Booking.com",
+    "rating": 4,
+    "text": "Great location and clean rooms. The Wi-Fi could be a bit stronger, but overall a wonderful experience for our family trip.",
+    "date": "5 hours ago",
+    "status": "pending",
+    "aiSuggestion": "Thank you for your kind words, James! We are thrilled your family enjoyed the stay. We've noted the Wi-Fi feedback and are upgrading our network infrastructure this month. We'd love to welcome you back!",
+    "createdAt": "2026-06-26T01:30:00.000Z"
+  },
+  {
+    "id": 3,
+    "guest": "Maria González",
+    "platform": "Google",
+    "rating": 5,
+    "text": "The best homestay experience we have ever had! The traditional breakfast was amazing, and the host arranged a wonderful trek for us.",
+    "date": "1 day ago",
+    "status": "pending",
+    "aiSuggestion": "We're so grateful for your lovely review, Maria! Our traditional breakfast is something we take great pride in. It was our pleasure to arrange the trek — the monsoon trails are truly magical. Hope to see you again!",
+    "createdAt": "2026-06-25T06:30:00.000Z"
+  },
+  {
+    "id": 4,
+    "guest": "David Chen",
+    "platform": "Airbnb",
+    "rating": 5,
+    "text": "Perfect getaway! The cottage was cozy, the garden was lovely, and the homemade dinner was outstanding. Highly recommend for couples.",
+    "date": "2 days ago",
+    "status": "replied",
+    "aiSuggestion": null,
+    "createdAt": "2026-06-24T10:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "guest": "Emily Watson",
+    "platform": "Google",
+    "rating": 3,
+    "text": "Nice location but the room could use some maintenance. The bathroom fixtures were a bit dated. Breakfast was good though.",
+    "date": "3 days ago",
+    "status": "pending",
+    "aiSuggestion": "Thank you for your honest feedback, Emily. We appreciate you highlighting the maintenance needs — we've scheduled renovations for next month. We're glad you enjoyed the breakfast and hope to provide a much improved experience on your next visit!",
+    "createdAt": "2026-06-23T14:00:00.000Z"
+  },
+  {
+    "id": 6,
+    "guest": "Akira Tanaka",
+    "platform": "Booking.com",
+    "rating": 5,
+    "text": "What a gem! The host speaks multiple languages and made us feel right at home. The local food tour recommendation was the highlight of our trip.",
+    "date": "4 days ago",
+    "status": "replied",
+    "aiSuggestion": null,
+    "createdAt": "2026-06-22T08:00:00.000Z"
+  },
+  {
+    "id": 7,
+    "guest": "Priya Sharma",
+    "platform": "Airbnb",
+    "rating": 4,
+    "text": "Lovely homestay with amazing views. The only downside was the road access during monsoon. Everything else was top-notch.",
+    "date": "5 days ago",
+    "status": "pending",
+    "aiSuggestion": "Thank you for the wonderful review, Priya! We understand the road access can be challenging during monsoons. We now provide detailed driving directions for the rainy season and can arrange pickups from the main road. Looking forward to hosting you again!",
+    "createdAt": "2026-06-21T12:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "guest": "Lucas Müller",
+    "platform": "Google",
+    "rating": 5,
+    "text": "Exceeded all expectations! From the warm welcome to the stargazing session on the terrace, every moment was magical. Will definitely return.",
+    "date": "1 week ago",
+    "status": "replied",
+    "aiSuggestion": null,
+    "createdAt": "2026-06-19T16:00:00.000Z"
+  }
+]
