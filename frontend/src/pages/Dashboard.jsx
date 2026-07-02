@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchReviews, deleteReview, patchReview, createReview } from '../services/api'
+import { fetchReviews, deleteReview, patchReview, createReview, updateReview } from '../services/api'
 import { Link } from 'react-router-dom'
 
 const quickActions = [
@@ -31,6 +31,11 @@ export default function Dashboard() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [newReview, setNewReview] = useState({ guest: '', platform: 'Airbnb', rating: 5, text: '' })
   const [addLoading, setAddLoading] = useState(false)
+
+  // Edit review modal state
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editReview, setEditReview] = useState(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   const loadReviews = async () => {
     try {
@@ -91,6 +96,31 @@ export default function Dashboard() {
       showAction(err.response?.data?.message || 'Failed to add review', true)
     } finally {
       setAddLoading(false)
+    }
+  }
+
+  const handleEditReview = async (e) => {
+    e.preventDefault()
+    setEditLoading(true)
+    try {
+      const result = await updateReview(editReview._id, {
+        guest: editReview.guest,
+        platform: editReview.platform,
+        rating: Number(editReview.rating),
+        text: editReview.text,
+        status: editReview.status,
+        aiSuggestion: editReview.aiSuggestion,
+      })
+      setRecentReviews((prev) =>
+        prev.map((r) => (r._id === editReview._id ? result.data : r))
+      )
+      setShowEditModal(false)
+      setEditReview(null)
+      showAction('Review updated successfully')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to update review', true)
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -333,6 +363,15 @@ export default function Dashboard() {
                             </button>
                           )}
                           <button
+                            onClick={() => {
+                              setEditReview(review)
+                              setShowEditModal(true)
+                            }}
+                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-primary-400 hover:bg-primary-900/20' : 'text-primary-600 hover:bg-primary-50'}`}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
                             onClick={() => handleDelete(review._id)}
                             className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-500 hover:bg-red-50'}`}
                           >
@@ -487,6 +526,86 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
+                  className={`px-6 py-3 rounded-xl border font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Review Modal */}
+      {showEditModal && editReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowEditModal(false); setEditReview(null); }} />
+          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-8 ${darkMode ? 'bg-dark-800 border-gray-700' : 'bg-white border-gray-200'}`}
+            style={{ animation: 'slideUp 0.3s ease-out' }}
+          >
+            <h2 className={`text-xl font-heading font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Edit Review</h2>
+
+            <form onSubmit={handleEditReview} className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Guest Name</label>
+                <input
+                  type="text"
+                  value={editReview.guest}
+                  onChange={(e) => setEditReview({ ...editReview, guest: e.target.value })}
+                  placeholder="John Doe"
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Platform</label>
+                  <select
+                    value={editReview.platform}
+                    onChange={(e) => setEditReview({ ...editReview, platform: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="Airbnb">Airbnb</option>
+                    <option value="Booking.com">Booking.com</option>
+                    <option value="Google">Google</option>
+                    <option value="TripAdvisor">TripAdvisor</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Rating</label>
+                  <select
+                    value={editReview.rating}
+                    onChange={(e) => setEditReview({ ...editReview, rating: Number(e.target.value) })}
+                    className={inputClass}
+                  >
+                    {[5, 4, 3, 2, 1].map((r) => (
+                      <option key={r} value={r}>{'⭐'.repeat(r)} ({r})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Review Text</label>
+                <textarea
+                  value={editReview.text}
+                  onChange={(e) => setEditReview({ ...editReview, text: e.target.value })}
+                  placeholder="Write the guest's review here..."
+                  rows={3}
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                >
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditReview(null); }}
                   className={`px-6 py-3 rounded-xl border font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
                 >
                   Cancel

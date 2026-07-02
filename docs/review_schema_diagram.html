@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StayWise Database Schema — Review Collection</title>
+  <!-- Google Fonts for professional typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #10b981; /* MongoDB Emerald Green */
+      --primary-dark: #0f766e;
+      --bg: #ffffff;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Print utility button panel (hidden on print) */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      width: 100%;
+      max-width: 850px;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .toolbar-info {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background-color: #f1f5f9;
+      color: var(--text-main);
+    }
+
+    /* Print Container (optimized for PDF export) */
+    .print-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 850px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    /* Top MongoDB Stripe */
+    .top-stripe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: #001e2b;
+      border-top-left-radius: 15px;
+      border-top-right-radius: 15px;
+      overflow: hidden;
+      display: flex;
+    }
+    
+    .top-stripe::before {
+      content: '';
+      width: 25%;
+      height: 100%;
+      background: #00ed64;
+    }
+
+    /* Header styling */
+    .header {
+      margin-bottom: 28px;
+    }
+
+    .project-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* Table diagram styling */
+    .schema-card {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #ffffff;
+      margin-top: 20px;
+    }
+
+    .schema-header {
+      background: #f0fdf4;
+      border-bottom: 1.5px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .collection-icon {
+      font-size: 16px;
+    }
+
+    .collection-name {
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-main);
+    }
+
+    .model-info {
+      font-size: 11px;
+      color: #15803d;
+      font-weight: 500;
+      background: #dcfce7;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      margin-left: 8px;
+    }
+
+    .schema-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .schema-table th {
+      background: #f8fafc;
+      padding: 10px 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-sub);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .schema-table td {
+      padding: 12px 20px;
+      font-size: 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    .schema-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Field font and style */
+    .field-name {
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-type {
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-weight: 600;
+      color: #097969; /* Dark emerald type color */
+    }
+
+    .field-validation {
+      color: var(--text-sub);
+    }
+
+    .field-default {
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 11px;
+      color: #334155;
+    }
+
+    /* Badges */
+    .badge {
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .badge-pk {
+      background-color: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .badge-req {
+      background-color: #fff1f2;
+      color: #e11d48;
+      border: 1px solid #fecdd3;
+    }
+
+    .badge-def {
+      background-color: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 1px 6px;
+    }
+
+    /* Footer Metadata */
+    .footer-meta {
+      margin-top: 35px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-top: 1px solid #f1f5f9;
+      padding-top: 15px;
+    }
+
+    .footer-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Tab styles for toggle view */
+    .view-toggle {
+      display: flex;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-sub);
+      transition: all 0.15s ease;
+      border: none;
+      background: transparent;
+    }
+
+    .tab.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Printable style optimizations */
+    @media print {
+      body {
+        background-color: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .toolbar {
+        display: none !important;
+      }
+
+      .print-container {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+
+      .schema-card {
+        border-color: #cbd5e1 !important;
+      }
+
+      /* Force background color printing */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toolbar with print and toggle options (Hidden in PDF print output) -->
+  <div class="toolbar">
+    <div class="toolbar-info">
+      <strong>StayWise Document Generator</strong> • Student-Level Schema
+    </div>
+    
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div class="view-toggle">
+        <button class="tab active" onclick="switchTab('html-table')">HTML Table</button>
+        <button class="tab" onclick="switchTab('svg-diagram')">SVG Vector</button>
+      </div>
+      <button class="btn btn-secondary" onclick="window.print()">
+        🖨️ Export PDF / Print
+      </button>
+    </div>
+  </div>
+
+  <!-- Print Container -->
+  <div class="print-container">
+    <div class="top-stripe"></div>
+    
+    <div class="header">
+      <div class="project-name">StayWise — Homestay Management Assistant</div>
+      <h1 class="title">Database Schema Specification</h1>
+      <div class="subtitle">MongoDB Atlas Collection Model for Internships & Term Projects</div>
+    </div>
+
+    <!-- TAB 1: HTML Schema Table -->
+    <div id="html-table" class="tab-content active">
+      <div class="schema-card">
+        <div class="schema-header">
+          <span class="collection-icon">📁</span>
+          <span class="collection-name">Review</span>
+          <span class="model-info">Collection Model</span>
+        </div>
+        
+        <table class="schema-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Field Name</th>
+              <th style="width: 18%;">Data Type</th>
+              <th style="width: 37%;">Validations / Constraints</th>
+              <th style="width: 20%;">Default Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="field-name">_id <span class="badge badge-pk">PK</span></div>
+              </td>
+              <td><span class="field-type">ObjectId</span></td>
+              <td><span class="field-validation">Primary Key (Unique, Auto-generated)</span></td>
+              <td><span class="field-default">—</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">guest <span class="badge badge-req">REQ</span></div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">Required, Trimmed, Guest's full name</span></td>
+              <td><span class="field-default">—</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">platform <span class="badge badge-req">REQ</span></div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">Required, Trimmed (e.g. "Airbnb", "Google")</span></td>
+              <td><span class="field-default">—</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">rating <span class="badge badge-req">REQ</span></div>
+              </td>
+              <td><span class="field-type">Number</span></td>
+              <td><span class="field-validation">Required, Range [1 - 5]</span></td>
+              <td><span class="field-default">—</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">text <span class="badge badge-req">REQ</span></div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">Required, Trimmed, Review message body</span></td>
+              <td><span class="field-default">—</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">date</div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">Relative time representation string</span></td>
+              <td><span class="badge badge-def">"Just now"</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">status</div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">Enum: <code>pending</code>, <code>replied</code>, <code>flagged</code></span></td>
+              <td><span class="badge badge-def">"pending"</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">aiSuggestion</div>
+              </td>
+              <td><span class="field-type">String</span></td>
+              <td><span class="field-validation">AI suggestion response (Nullable)</span></td>
+              <td><span class="badge badge-def">null</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">createdAt</div>
+              </td>
+              <td><span class="field-type">Date</span></td>
+              <td><span class="field-validation">Creation timestamp (Mongoose tracked)</span></td>
+              <td><span class="badge badge-def">Date.now</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="field-name">updatedAt</div>
+              </td>
+              <td><span class="field-type">Date</span></td>
+              <td><span class="field-validation">Last updated timestamp (Mongoose tracked)</span></td>
+              <td><span class="badge badge-def">Date.now</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: SVG Schema Diagram -->
+    <div id="svg-diagram" class="tab-content">
+      <div style="border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 20px; background: #ffffff; padding: 10px;">
+        <!-- Embedded SVG for rendering -->
+        <object data="review_schema_diagram.svg" type="image/svg+xml" style="width: 100%; height: auto; display: block;"></object>
+      </div>
+    </div>
+
+    <!-- Footer Meta -->
+    <div class="footer-meta">
+      <span>📁 Database: MongoDB Atlas (NoSQL)</span>
+      <span>🚀 StayWise Homestay Assistant</span>
+      <span>📄 Export-Optimized (A4 / Portrait / White Background)</span>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      // Toggle tabs
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const activeTab = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.toLowerCase().includes(tabId.split('-')[0]));
+      if (activeTab) activeTab.classList.add('active');
+      
+      document.getElementById(tabId).classList.add('active');
+    }
+  </script>
+</body>
+</html>

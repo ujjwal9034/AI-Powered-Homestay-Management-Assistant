@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%">
+  <!-- Style block -->
+  <style>
+    .title { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-weight: 700; font-size: 22px; fill: #0f172a; }
+    .subtitle { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-weight: 500; font-size: 13px; fill: #64748b; }
+    .card { fill: #ffffff; stroke: #e2e8f0; stroke-width: 1.5; rx: 12px; }
+    .card-header { fill: #f0fdf4; stroke: #e2e8f0; stroke-width: 1.5; }
+    .header-title { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-weight: 700; font-size: 16px; fill: #0f172a; }
+    .header-subtext { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-weight: 400; font-size: 11px; fill: #15803d; }
+    
+    .th-bg { fill: #f8fafc; }
+    .th-text { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-weight: 600; font-size: 11px; fill: #475569; letter-spacing: 0.05em; }
+    
+    .cell-text { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; font-size: 12px; fill: #0f172a; font-weight: 600; }
+    .cell-type { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; font-size: 11px; fill: #097969; font-weight: 600; }
+    .cell-validation { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-size: 11px; fill: #475569; }
+    
+    .badge-pk { fill: #eff6ff; stroke: #bfdbfe; rx: 4px; }
+    .badge-pk-text { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-size: 9px; font-weight: 700; fill: #1d4ed8; }
+    
+    .badge-req { fill: #fff1f2; stroke: #fecdd3; rx: 4px; }
+    .badge-req-text { font-family: 'Inter', -apple-system, system-ui, sans-serif; font-size: 9px; font-weight: 700; fill: #e11d48; }
+    
+    .badge-def { fill: #f1f5f9; stroke: #cbd5e1; rx: 4px; }
+    .badge-def-text { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; font-size: 10px; font-weight: 500; fill: #334155; }
+    
+    .line { stroke: #f1f5f9; stroke-width: 1; }
+    .line-bold { stroke: #e2e8f0; stroke-width: 1.5; }
+    
+    .shadow {
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.02)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.05));
+    }
+  </style>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#ffffff" />
+  
+  <!-- Main Schema Box -->
+  <g transform="translate(50, 50)">
+    <!-- Base Card -->
+    <rect class="card shadow" x="0" y="0" width="800" height="490" />
+    
+    <!-- Card Header -->
+    <path d="M 1.5 12 A 10.5 10.5 0 0 1 12 1.5 L 788 1.5 A 10.5 10.5 0 0 1 798.5 12 L 798.5 60 L 1.5 60 Z" fill="#f0fdf4" stroke="#e2e8f0" stroke-width="1.5" />
+    
+    <!-- Top Green Stripe (MongoDB Style Accent) -->
+    <path d="M 1.5 4 A 2.5 2.5 0 0 1 4 1.5 L 796 1.5 A 2.5 2.5 0 0 1 798.5 4 L 798.5 6 L 1.5 6 Z" fill="#10b981" />
+    
+    <!-- Header Text -->
+    <text class="header-title" x="24" y="36">📋 Collection: Review</text>
+    <text class="header-subtext" x="195" y="35">Database: MongoDB Atlas (Mongoose Model)</text>
+    
+    <!-- Table Header Row -->
+    <rect class="th-bg" x="1.5" y="60.75" width="797" height="30" stroke="#e2e8f0" stroke-width="1" />
+    <text class="th-text" x="24" y="79">FIELD NAME</text>
+    <text class="th-text" x="220" y="79">DATA TYPE</text>
+    <text class="th-text" x="360" y="79">VALIDATIONS / CONSTRAINTS</text>
+    <text class="th-text" x="650" y="79">DEFAULT VALUE</text>
+    
+    <!-- Rows -->
+    <!-- Row 1: _id -->
+    <g transform="translate(0, 91.5)">
+      <text class="cell-text" x="24" y="22">_id</text>
+      <!-- PK Badge -->
+      <rect class="badge-pk" x="80" y="9" width="22" height="15" />
+      <text class="badge-pk-text" x="84" y="20">PK</text>
+      
+      <text class="cell-type" x="220" y="22">ObjectId</text>
+      <text class="cell-validation" x="360" y="22">Unique identifier (Auto-generated)</text>
+      <text class="cell-validation" x="650" y="22">—</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 2: guest -->
+    <g transform="translate(0, 128.5)">
+      <text class="cell-text" x="24" y="22">guest</text>
+      <!-- Req Badge -->
+      <rect class="badge-req" x="80" y="9" width="30" height="15" />
+      <text class="badge-req-text" x="84" y="20">REQ</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">Required, Trimmed, Guest's full name</text>
+      <text class="cell-validation" x="650" y="22">—</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 3: platform -->
+    <g transform="translate(0, 165.5)">
+      <text class="cell-text" x="24" y="22">platform</text>
+      <!-- Req Badge -->
+      <rect class="badge-req" x="100" y="9" width="30" height="15" />
+      <text class="badge-req-text" x="104" y="20">REQ</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">Required, Trimmed (e.g. "Airbnb", "Google")</text>
+      <text class="cell-validation" x="650" y="22">—</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 4: rating -->
+    <g transform="translate(0, 202.5)">
+      <text class="cell-text" x="24" y="22">rating</text>
+      <!-- Req Badge -->
+      <rect class="badge-req" x="80" y="9" width="30" height="15" />
+      <text class="badge-req-text" x="84" y="20">REQ</text>
+      
+      <text class="cell-type" x="220" y="22">Number</text>
+      <text class="cell-validation" x="360" y="22">Required, Min: 1, Max: 5</text>
+      <text class="cell-validation" x="650" y="22">—</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 5: text -->
+    <g transform="translate(0, 239.5)">
+      <text class="cell-text" x="24" y="22">text</text>
+      <!-- Req Badge -->
+      <rect class="badge-req" x="65" y="9" width="30" height="15" />
+      <text class="badge-req-text" x="69" y="20">REQ</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">Required, Trimmed, Review message content</text>
+      <text class="cell-validation" x="650" y="22">—</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 6: date -->
+    <g transform="translate(0, 276.5)">
+      <text class="cell-text" x="24" y="22">date</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">Relative time string (e.g. "2 hours ago")</text>
+      
+      <!-- Default Badge -->
+      <rect class="badge-def" x="650" y="9" width="76" height="16" />
+      <text class="badge-def-text" x="654" y="21">"Just now"</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 7: status -->
+    <g transform="translate(0, 313.5)">
+      <text class="cell-text" x="24" y="22">status</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">Enum: [ 'pending', 'replied', 'flagged' ]</text>
+      
+      <!-- Default Badge -->
+      <rect class="badge-def" x="650" y="9" width="66" height="16" />
+      <text class="badge-def-text" x="654" y="21">"pending"</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 8: aiSuggestion -->
+    <g transform="translate(0, 350.5)">
+      <text class="cell-text" x="24" y="22">aiSuggestion</text>
+      
+      <text class="cell-type" x="220" y="22">String</text>
+      <text class="cell-validation" x="360" y="22">AI generated response recommendation</text>
+      
+      <!-- Default Badge -->
+      <rect class="badge-def" x="650" y="9" width="38" height="16" />
+      <text class="badge-def-text" x="654" y="21">null</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 9: createdAt -->
+    <g transform="translate(0, 387.5)">
+      <text class="cell-text" x="24" y="22">createdAt</text>
+      
+      <text class="cell-type" x="220" y="22">Date</text>
+      <text class="cell-validation" x="360" y="22">Mongoose managed creation timestamp</text>
+      
+      <!-- Default Badge -->
+      <rect class="badge-def" x="650" y="9" width="62" height="16" />
+      <text class="badge-def-text" x="654" y="21">Date.now</text>
+      <line class="line" x1="1.5" y1="36" x2="798.5" y2="36" />
+    </g>
+    
+    <!-- Row 10: updatedAt -->
+    <g transform="translate(0, 424.5)">
+      <text class="cell-text" x="24" y="22">updatedAt</text>
+      
+      <text class="cell-type" x="220" y="22">Date</text>
+      <text class="cell-validation" x="360" y="22">Mongoose managed update timestamp</text>
+      
+      <!-- Default Badge -->
+      <rect class="badge-def" x="650" y="9" width="62" height="16" />
+      <text class="badge-def-text" x="654" y="21">Date.now</text>
+    </g>
+  </g>
+  
+  <!-- Document Metadata & Labels -->
+  <g transform="translate(50, 565)">
+    <text font-family="'Inter', -apple-system, system-ui, sans-serif" font-size="11px" font-weight="600" fill="#94a3b8" x="0" y="0">STAYWISE — HOMESTAY MANAGEMENT ASSISTANT</text>
+    <text font-family="'Inter', -apple-system, system-ui, sans-serif" font-size="11px" font-weight="400" fill="#cbd5e1" x="320" y="0">|</text>
+    <text font-family="'Inter', -apple-system, system-ui, sans-serif" font-size="11px" font-weight="500" fill="#94a3b8" x="335" y="0">COLLECTION: REVIEW</text>
+    <text font-family="'Inter', -apple-system, system-ui, sans-serif" font-size="11px" font-weight="400" fill="#cbd5e1" x="495" y="0">|</text>
+    <text font-family="'Inter', -apple-system, system-ui, sans-serif" font-size="11px" font-weight="500" fill="#94a3b8" x="510" y="0">FORMAT: MONGOOSE / MONGODB ATLAS</text>
+  </g>
+</svg>
