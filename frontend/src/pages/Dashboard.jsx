@@ -1,47 +1,13 @@
 /**
  * Dashboard — Main management view with stats, reviews, quick actions, and AI insights.
- * Full dark mode and responsive layout support.
- * Reviews are fetched from the Express backend via Axios.
+ * Reviews are fetched from MongoDB via the Express backend.
+ * Uses _id (MongoDB ObjectId) instead of numeric id.
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
-import { fetchReviews } from '../services/api'
-
-/* ── Fallback data (used when backend is unavailable) ────────────────────────── */
-const fallbackReviews = [
-  {
-    id: 1,
-    guest: 'Sarah Mitchell',
-    platform: 'Airbnb',
-    rating: 5,
-    text: 'Absolutely loved our stay! The mountain views were breathtaking and the host was incredibly helpful with local recommendations.',
-    date: '2 hours ago',
-    status: 'replied',
-    aiSuggestion: null,
-  },
-  {
-    id: 2,
-    guest: 'James Park',
-    platform: 'Booking.com',
-    rating: 4,
-    text: 'Great location and clean rooms. The Wi-Fi could be a bit stronger, but overall a wonderful experience for our family trip.',
-    date: '5 hours ago',
-    status: 'pending',
-    aiSuggestion:
-      "Thank you for your kind words, James! We are thrilled your family enjoyed the stay. We've noted the Wi-Fi feedback and are upgrading our network infrastructure this month. We'd love to welcome you back!",
-  },
-  {
-    id: 3,
-    guest: 'Maria González',
-    platform: 'Google',
-    rating: 5,
-    text: 'The best homestay experience we have ever had! The traditional breakfast was amazing, and the host arranged a wonderful trek for us.',
-    date: '1 day ago',
-    status: 'pending',
-    aiSuggestion:
-      "We're so grateful for your lovely review, Maria! Our traditional breakfast is something we take great pride in. It was our pleasure to arrange the trek — the monsoon trails are truly magical. Hope to see you again!",
-  },
-]
+import { useAuth } from '../context/AuthContext'
+import { fetchReviews, deleteReview, patchReview, createReview } from '../services/api'
+import { Link } from 'react-router-dom'
 
 const quickActions = [
   { label: 'View All Reviews', icon: '📋' },
@@ -53,29 +19,85 @@ const quickActions = [
 export default function Dashboard() {
   const [expandedReview, setExpandedReview] = useState(null)
   const { darkMode } = useTheme()
+  const { isAuthenticated, user } = useAuth()
 
   /* ── Fetch reviews from backend ──────────────────────────────────────────── */
   const [recentReviews, setRecentReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [actionMsg, setActionMsg] = useState(null)
+
+  // Add review modal state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newReview, setNewReview] = useState({ guest: '', platform: 'Airbnb', rating: 5, text: '' })
+  const [addLoading, setAddLoading] = useState(false)
+
+  const loadReviews = async () => {
+    try {
+      setLoading(true)
+      const result = await fetchReviews()
+      setRecentReviews(result.data || [])
+      setError(null)
+    } catch (err) {
+      console.warn('Backend unavailable:', err.message)
+      setRecentReviews([])
+      setError('Could not connect to backend — make sure the server is running')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const loadReviews = async () => {
-      try {
-        setLoading(true)
-        const result = await fetchReviews()
-        setRecentReviews(result.data || [])
-        setError(null)
-      } catch (err) {
-        console.warn('Backend unavailable, using fallback data:', err.message)
-        setRecentReviews(fallbackReviews)
-        setError('Could not connect to backend — showing cached data')
-      } finally {
-        setLoading(false)
-      }
-    }
     loadReviews()
   }, [])
+
+  /* ── Action handlers ─────────────────────────────────────────────────────── */
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this review?')) return
+    try {
+      await deleteReview(id)
+      setRecentReviews((prev) => prev.filter((r) => r._id !== id))
+      showAction('Review deleted successfully')
+    } catch (err) {
+      showAction('Failed to delete review', true)
+    }
+  }
+
+  const handleMarkReplied = async (id) => {
+    try {
+      const result = await patchReview(id, { status: 'replied' })
+      setRecentReviews((prev) =>
+        prev.map((r) => (r._id === id ? result.data : r))
+      )
+      showAction('Marked as replied')
+    } catch (err) {
+      showAction('Failed to update status', true)
+    }
+  }
+
+  const handleAddReview = async (e) => {
+    e.preventDefault()
+    setAddLoading(true)
+    try {
+      const result = await createReview({
+        ...newReview,
+        rating: Number(newReview.rating),
+      })
+      setRecentReviews((prev) => [result.data, ...prev])
+      setShowAddModal(false)
+      setNewReview({ guest: '', platform: 'Airbnb', rating: 5, text: '' })
+      showAction('Review added successfully')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to add review', true)
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  const showAction = (msg, isError = false) => {
+    setActionMsg({ msg, isError })
+    setTimeout(() => setActionMsg(null), 3000)
+  }
 
   /* ── Compute dynamic stats from fetched reviews ──────────────────────────── */
   const totalReviews = recentReviews.length
@@ -93,9 +115,47 @@ export default function Dashboard() {
     { label: 'Pending Replies', value: String(pendingCount), change: `-${pendingCount}`, up: false, icon: '📝' },
   ]
 
+  /* ── Not logged in state ─────────────────────────────────────────────────── */
+  if (!isAuthenticated) {
+    return (
+      <section className="py-20">
+        <div className="max-w-lg mx-auto px-4 text-center">
+          <div className="text-6xl mb-6">🔒</div>
+          <h1 className={`text-2xl font-heading font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Sign in to access your Dashboard
+          </h1>
+          <p className={`mb-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            You need to be logged in to manage your homestay reviews and analytics.
+          </p>
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
+          >
+            Sign In
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </Link>
+        </div>
+      </section>
+    )
+  }
+
+  const inputClass = `w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`
+
   return (
     <section className="py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Toast notification */}
+        {actionMsg && (
+          <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 ${actionMsg.isError ? (darkMode ? 'bg-red-900/90 text-red-200 border border-red-800' : 'bg-red-500 text-white') : (darkMode ? 'bg-green-900/90 text-green-200 border border-green-800' : 'bg-green-500 text-white')}`}
+            style={{ animation: 'slideDown 0.3s ease-out' }}
+          >
+            <span>{actionMsg.isError ? '❌' : '✅'}</span>
+            {actionMsg.msg}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
           <div>
@@ -103,7 +163,7 @@ export default function Dashboard() {
               Dashboard
             </h1>
             <p className={`mt-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              Welcome back! Here's your homestay overview for today.
+              Welcome back, {user?.name?.split(' ')[0]}! Here's your homestay overview.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -111,8 +171,11 @@ export default function Dashboard() {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               AI Active
             </span>
-            <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${darkMode ? 'bg-primary-900/30 text-primary-400 hover:bg-primary-900/50' : 'bg-primary-50 text-primary-600 hover:bg-primary-100'}`}>
-              Generate Report
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md shadow-primary-500/20 hover:shadow-primary-500/40 hover:scale-105 active:scale-95"
+            >
+              + Add Review
             </button>
           </div>
         </div>
@@ -148,7 +211,7 @@ export default function Dashboard() {
             <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               <div className={`px-6 py-5 border-b flex items-center justify-between ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                 <h2 className={`font-heading font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Recent Reviews</h2>
-                <span className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{error ? 'Offline mode' : `${recentReviews.length} reviews`}</span>
+                <span className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{error ? 'Offline' : `${recentReviews.length} reviews`}</span>
               </div>
 
               {/* Error banner */}
@@ -163,21 +226,22 @@ export default function Dashboard() {
                 <div className="flex items-center justify-center py-16">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
-                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading reviews...</span>
+                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading reviews from MongoDB...</span>
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
-              {!loading && recentReviews.length === 0 && (
-                <div className="flex items-center justify-center py-16">
-                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No reviews found.</span>
+              {!loading && recentReviews.length === 0 && !error && (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <span className="text-4xl mb-3">📭</span>
+                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No reviews yet. Add your first review!</span>
                 </div>
               )}
 
               <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
                 {!loading && recentReviews.map((review) => (
-                  <div key={review.id} className={`p-6 transition-colors ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
+                  <div key={review._id} className={`p-6 transition-colors ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -189,7 +253,7 @@ export default function Dashboard() {
                             <div className={`flex items-center gap-2 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                               <span>{review.platform}</span>
                               <span>·</span>
-                              <span>{review.date}</span>
+                              <span>{review.date || new Date(review.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                         </div>
@@ -217,15 +281,15 @@ export default function Dashboard() {
                           <div className="mt-3">
                             <button
                               onClick={() =>
-                                setExpandedReview(expandedReview === review.id ? null : review.id)
+                                setExpandedReview(expandedReview === review._id ? null : review._id)
                               }
                               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer"
                             >
                               <span>🤖</span>
-                              {expandedReview === review.id ? 'Hide' : 'View'} AI Suggestion
+                              {expandedReview === review._id ? 'Hide' : 'View'} AI Suggestion
                               <svg
                                 className={`w-3 h-3 transition-transform duration-200 ${
-                                  expandedReview === review.id ? 'rotate-180' : ''
+                                  expandedReview === review._id ? 'rotate-180' : ''
                                 }`}
                                 fill="none"
                                 viewBox="0 0 24 24"
@@ -237,13 +301,16 @@ export default function Dashboard() {
                             </button>
                             <div
                               className={`overflow-hidden transition-all duration-300 ${
-                                expandedReview === review.id ? 'max-h-48 opacity-100 mt-3' : 'max-h-0 opacity-0'
+                                expandedReview === review._id ? 'max-h-48 opacity-100 mt-3' : 'max-h-0 opacity-0'
                               }`}
                             >
                               <div className={`rounded-xl border p-4 text-sm leading-relaxed ${darkMode ? 'bg-primary-900/20 border-primary-800 text-gray-300' : 'bg-primary-50/50 border-primary-100 text-gray-700'}`}>
                                 {review.aiSuggestion}
                                 <div className="flex items-center gap-2 mt-3">
-                                  <button className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer">
+                                  <button
+                                    onClick={() => handleMarkReplied(review._id)}
+                                    className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer"
+                                  >
                                     Use This Reply
                                   </button>
                                   <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
@@ -254,6 +321,24 @@ export default function Dashboard() {
                             </div>
                           </div>
                         )}
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 mt-3">
+                          {review.status === 'pending' && (
+                            <button
+                              onClick={() => handleMarkReplied(review._id)}
+                              className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-green-400 hover:bg-green-900/20' : 'text-green-600 hover:bg-green-50'}`}
+                            >
+                              ✓ Mark Replied
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(review._id)}
+                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-500 hover:bg-red-50'}`}
+                          >
+                            🗑 Delete
+                          </button>
+                        </div>
                       </div>
 
                       {/* Status badge */}
@@ -331,6 +416,86 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Add Review Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-8 ${darkMode ? 'bg-dark-800 border-gray-700' : 'bg-white border-gray-200'}`}
+            style={{ animation: 'slideUp 0.3s ease-out' }}
+          >
+            <h2 className={`text-xl font-heading font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Add New Review</h2>
+
+            <form onSubmit={handleAddReview} className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Guest Name</label>
+                <input
+                  type="text"
+                  value={newReview.guest}
+                  onChange={(e) => setNewReview({ ...newReview, guest: e.target.value })}
+                  placeholder="John Doe"
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Platform</label>
+                  <select
+                    value={newReview.platform}
+                    onChange={(e) => setNewReview({ ...newReview, platform: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="Airbnb">Airbnb</option>
+                    <option value="Booking.com">Booking.com</option>
+                    <option value="Google">Google</option>
+                    <option value="TripAdvisor">TripAdvisor</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Rating</label>
+                  <select
+                    value={newReview.rating}
+                    onChange={(e) => setNewReview({ ...newReview, rating: e.target.value })}
+                    className={inputClass}
+                  >
+                    {[5, 4, 3, 2, 1].map((r) => (
+                      <option key={r} value={r}>{'⭐'.repeat(r)} ({r})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Review Text</label>
+                <textarea
+                  value={newReview.text}
+                  onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
+                  placeholder="Write the guest's review here..."
+                  rows={3}
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                >
+                  {addLoading ? 'Adding...' : 'Add Review'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className={`px-6 py-3 rounded-xl border font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

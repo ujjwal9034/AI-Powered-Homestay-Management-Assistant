@@ -1,6 +1,6 @@
 /**
- * API Service — Axios instance & review API helpers for StayWise frontend.
- * Connects to the Express backend at the configured base URL.
+ * API Service — Axios instance & API helpers for StayWise frontend.
+ * Includes review CRUD + authentication endpoints.
  */
 
 import axios from 'axios';
@@ -15,10 +15,45 @@ const api = axios.create({
   timeout: 10000,
 });
 
+// ─── Auth interceptor: attach JWT token to every request ────────────────────────
+api.interceptors.request.use((config) => {
+  const user = JSON.parse(localStorage.getItem('staywise-user') || 'null');
+  if (user?.token) {
+    config.headers.Authorization = `Bearer ${user.token}`;
+  }
+  return config;
+});
+
+// ─── Auth API ───────────────────────────────────────────────────────────────────
+
+/**
+ * Register a new user account.
+ */
+export const registerUser = async (userData) => {
+  const response = await api.post('/api/auth/register', userData);
+  return response.data;
+};
+
+/**
+ * Login with email and password.
+ */
+export const loginUser = async (credentials) => {
+  const response = await api.post('/api/auth/login', credentials);
+  return response.data;
+};
+
+/**
+ * Get current user profile.
+ */
+export const getMe = async () => {
+  const response = await api.get('/api/auth/me');
+  return response.data;
+};
+
+// ─── Review API ─────────────────────────────────────────────────────────────────
 
 /**
  * Fetch all reviews.
- * @returns {Promise<Array>} Array of review objects
  */
 export const fetchReviews = async () => {
   const response = await api.get('/api/reviews');
@@ -27,8 +62,6 @@ export const fetchReviews = async () => {
 
 /**
  * Fetch a single review by ID.
- * @param {number} id
- * @returns {Promise<Object>} Review object
  */
 export const fetchReviewById = async (id) => {
   const response = await api.get(`/api/reviews/${id}`);
@@ -37,8 +70,6 @@ export const fetchReviewById = async (id) => {
 
 /**
  * Create a new review.
- * @param {Object} reviewData
- * @returns {Promise<Object>} Created review
  */
 export const createReview = async (reviewData) => {
   const response = await api.post('/api/reviews', reviewData);
@@ -47,9 +78,6 @@ export const createReview = async (reviewData) => {
 
 /**
  * Full-update a review (PUT).
- * @param {number} id
- * @param {Object} reviewData
- * @returns {Promise<Object>} Updated review
  */
 export const updateReview = async (id, reviewData) => {
   const response = await api.put(`/api/reviews/${id}`, reviewData);
@@ -58,9 +86,6 @@ export const updateReview = async (id, reviewData) => {
 
 /**
  * Partially update a review (PATCH).
- * @param {number} id
- * @param {Object} fields
- * @returns {Promise<Object>} Updated review
  */
 export const patchReview = async (id, fields) => {
   const response = await api.patch(`/api/reviews/${id}`, fields);
@@ -69,8 +94,6 @@ export const patchReview = async (id, fields) => {
 
 /**
  * Delete a review.
- * @param {number} id
- * @returns {Promise<Object>} Deleted review
  */
 export const deleteReview = async (id) => {
   const response = await api.delete(`/api/reviews/${id}`);
