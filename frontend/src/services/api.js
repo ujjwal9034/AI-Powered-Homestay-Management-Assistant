@@ -69,7 +69,7 @@ export const getMe = async () => {
  * Get the Google OAuth initiation URL.
  */
 export const getGoogleAuthUrl = () => {
-  const baseUrl = API_BASE_URL || window.location.origin;
+  const baseUrl = API_BASE_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
   return `${baseUrl}/api/auth/google`;
 };
 
