@@ -1,6 +1,8 @@
 /**
  * API Service — Axios instance & API helpers for StayWise frontend.
  * Includes review CRUD + authentication endpoints.
+ *
+ * Week 6 — Added logout, Google OAuth URL helper.
  */
 
 import axios from 'axios';
@@ -43,11 +45,32 @@ export const loginUser = async (credentials) => {
 };
 
 /**
+ * Logout the current user.
+ */
+export const logoutUser = async () => {
+  try {
+    const response = await api.post('/api/auth/logout');
+    return response.data;
+  } catch {
+    // If logout fails (e.g., token already expired), still return success
+    return { success: true, message: 'Logged out locally' };
+  }
+};
+
+/**
  * Get current user profile.
  */
 export const getMe = async () => {
   const response = await api.get('/api/auth/me');
   return response.data;
+};
+
+/**
+ * Get the Google OAuth initiation URL.
+ */
+export const getGoogleAuthUrl = () => {
+  const baseUrl = API_BASE_URL || window.location.origin;
+  return `${baseUrl}/api/auth/google`;
 };
 
 // ─── Review API ─────────────────────────────────────────────────────────────────

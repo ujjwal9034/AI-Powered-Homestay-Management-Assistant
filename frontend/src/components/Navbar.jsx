@@ -120,6 +120,13 @@ export default function Navbar() {
                       >
                         <span>📊</span> Dashboard
                       </Link>
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <span>👤</span> Profile
+                      </Link>
                       <button
                         onClick={handleLogout}
                         className={`flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer ${darkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'}`}

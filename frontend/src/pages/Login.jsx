@@ -1,11 +1,14 @@
 /**
  * Login — Authentication page with real sign-in/sign-up.
  * Connects to backend /api/auth endpoints.
+ *
+ * Week 6 — Google OAuth button wired up. GitHub button as "Coming Soon".
  */
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { getGoogleAuthUrl } from '../services/api'
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -44,11 +47,23 @@ export default function Login() {
         setError(result.message || 'Something went wrong')
       }
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Network error — is the backend running?'
-      setError(msg)
+      // Handle validation errors from express-validator
+      const data = err.response?.data
+      if (data?.errors && Array.isArray(data.errors)) {
+        setError(data.errors.map((e) => e.message).join('. '))
+      } else {
+        setError(data?.message || err.message || 'Network error — is the backend running?')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  /**
+   * Initiate Google OAuth login
+   */
+  const handleGoogleLogin = () => {
+    window.location.href = getGoogleAuthUrl()
   }
 
   const inputClass = `w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500 dark:placeholder-gray-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`
@@ -186,7 +201,10 @@ export default function Login() {
 
           {/* Social login */}
           <div className="grid grid-cols-2 gap-3">
-            <button className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors duration-200 cursor-pointer ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            <button
+              onClick={handleGoogleLogin}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors duration-200 cursor-pointer ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -195,7 +213,11 @@ export default function Login() {
               </svg>
               Google
             </button>
-            <button className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors duration-200 cursor-pointer ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            <button
+              disabled
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium cursor-not-allowed opacity-50 ${darkMode ? 'border-gray-600 text-gray-300' : 'border-gray-200 text-gray-700'}`}
+              title="Coming Soon"
+            >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.09.682-.218.682-.484 0-.236-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .269.18.579.688.481C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
               </svg>

@@ -1,6 +1,8 @@
 /**
  * Auth Controller
- * Handles user registration, login, and profile retrieval.
+ * Handles user registration, login, logout, profile retrieval, and Google OAuth.
+ *
+ * Week 6 — Added logout endpoint and Google OAuth callback handler.
  */
 
 const jwt = require('jsonwebtoken');
@@ -18,18 +20,12 @@ const generateToken = (id) => {
 /**
  * POST /api/auth/register
  * Register a new user account.
+ *
+ * Validation is handled by express-validator middleware (see validators.js).
  */
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    // Validate required fields
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide name, email, and password',
-      });
-    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -79,18 +75,12 @@ const register = async (req, res) => {
 /**
  * POST /api/auth/login
  * Authenticate user and return token.
+ *
+ * Validation is handled by express-validator middleware (see validators.js).
  */
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password',
-      });
-    }
 
     // Find user and include password field for comparison
     const user = await User.findOne({ email }).select('+password');
@@ -99,6 +89,14 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+    }
+
+    // Check if user has a password (OAuth-only users don't)
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: 'This account uses Google sign-in. Please use the Google login button.',
       });
     }
 
@@ -123,6 +121,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatar: user.avatar,
         token,
       },
     });
@@ -134,6 +133,20 @@ const login = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+/**
+ * POST /api/auth/logout
+ * Logout the current user.
+ *
+ * Since JWT is stateless, this endpoint acknowledges the logout
+ * and the client is responsible for removing the token.
+ */
+const logout = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully',
+  });
 };
 
 /**
@@ -151,6 +164,8 @@ const getMe = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatar: user.avatar,
+        googleId: user.googleId ? true : false,
         createdAt: user.createdAt,
       },
     });
@@ -164,4 +179,23 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe };
+/**
+ * GET /api/auth/google/callback
+ * Handle Google OAuth callback.
+ * Generates a JWT and redirects to the frontend with the token.
+ */
+const googleCallback = (req, res) => {
+  try {
+    const token = generateToken(req.user._id);
+    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    // Redirect to frontend with token as query parameter
+    res.redirect(`${frontendURL}/auth/callback?token=${token}`);
+  } catch (error) {
+    console.error('[googleCallback] Error:', error.message);
+    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendURL}/login?error=oauth_failed`);
+  }
+};
+
+module.exports = { register, login, logout, getMe, googleCallback };

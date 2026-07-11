@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchReviews, deleteReview, patchReview, createReview, updateReview } from '../services/api'
-import { Link } from 'react-router-dom'
 
 const quickActions = [
   { label: 'View All Reviews', icon: '📋' },
@@ -19,7 +18,7 @@ const quickActions = [
 export default function Dashboard() {
   const [expandedReview, setExpandedReview] = useState(null)
   const { darkMode } = useTheme()
-  const { isAuthenticated, user } = useAuth()
+  const { user } = useAuth()
 
   /* ── Fetch reviews from backend ──────────────────────────────────────────── */
   const [recentReviews, setRecentReviews] = useState([])
@@ -144,32 +143,6 @@ export default function Dashboard() {
     { label: 'Response Rate', value: `${responseRate}%`, change: '+4%', up: true, icon: '💬' },
     { label: 'Pending Replies', value: String(pendingCount), change: `-${pendingCount}`, up: false, icon: '📝' },
   ]
-
-  /* ── Not logged in state ─────────────────────────────────────────────────── */
-  if (!isAuthenticated) {
-    return (
-      <section className="py-20">
-        <div className="max-w-lg mx-auto px-4 text-center">
-          <div className="text-6xl mb-6">🔒</div>
-          <h1 className={`text-2xl font-heading font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Sign in to access your Dashboard
-          </h1>
-          <p className={`mb-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            You need to be logged in to manage your homestay reviews and analytics.
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
-          >
-            Sign In
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </Link>
-        </div>
-      </section>
-    )
-  }
 
   const inputClass = `w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`
 

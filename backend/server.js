@@ -2,13 +2,15 @@
  * StayWise Backend — Express.js Server
  * AI-Powered Homestay Management Assistant API
  *
- * Week 5: MongoDB Atlas + JWT Authentication
+ * Week 6: Authentication System — JWT, Google OAuth, Rate Limiting, Validation
  */
 
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const passport = require('passport');
 const connectDB = require('./config/db');
+const { initializePassport } = require('./config/passport');
 const requestLogger = require('./middleware/requestLogger');
 const errorHandler = require('./middleware/errorHandler');
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -22,6 +24,10 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
+
+// ─── Passport Initialization ────────────────────────────────────────────────────
+initializePassport();
+app.use(passport.initialize());
 
 // ─── API Routes ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -37,7 +43,9 @@ app.get('/', (_req, res) => {
       health: 'GET  /api/health',
       register: 'POST /api/auth/register',
       login: 'POST /api/auth/login',
+      logout: 'POST /api/auth/logout',
       me: 'GET  /api/auth/me',
+      googleOAuth: 'GET  /api/auth/google',
       reviews: 'GET  /api/reviews',
       reviewById: 'GET  /api/reviews/:id',
       createReview: 'POST /api/reviews',
