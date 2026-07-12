@@ -122,7 +122,7 @@ export const replyToReview = async (id, text) => {
 };
 
 export const requestReviewSuggestion = async (id) => {
-  const response = await api.post(`/api/reviews/${id}/suggest`);
+  const response = await api.post(`/api/reviews/${id}/suggest`, {}, { timeout: 30000 });
   return response.data;
 };
 
@@ -154,12 +154,12 @@ export const deleteUser = async (id) => {
 };
 
 export const chatWithLocalGuide = async (id, message, history) => {
-  const response = await api.post(`/api/homestays/${id}/chat`, { message, history });
+  const response = await api.post(`/api/homestays/${id}/chat`, { message, history }, { timeout: 30000 });
   return response.data;
 };
 
 export const enhanceHomestayDescription = async (data) => {
-  const response = await api.post('/api/homestays/enhance', data);
+  const response = await api.post('/api/homestays/enhance', data, { timeout: 30000 });
   return response.data;
 };
 
@@ -187,6 +187,33 @@ export const updateBookingStatus = async (id, status) => {
 export const fetchHostAnalytics = async () => {
   const response = await api.get('/api/homestays/owner/analytics');
   return response.data;
+};
+
+// ─── AI Host Suite ───────────────────────────────────────────
+export const suggestHomestayPrice = async (homestayId, context) => {
+  const response = await api.post(`/api/homestays/${homestayId}/suggest-price`, context);
+  return response.data;
+};
+
+export const draftBookingMessage = async (bookingId, type) => {
+  const response = await api.post(`/api/bookings/${bookingId}/draft-message`, { type });
+  return response.data;
+};
+
+export const uploadImage = async (formData) => {
+  const response = await api.post('/api/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const resolveImageUrl = (url) => {
+  if (!url) return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  return `${apiBase}${url}`;
 };
 
 export default api;

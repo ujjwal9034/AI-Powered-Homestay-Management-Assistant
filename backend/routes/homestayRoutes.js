@@ -17,6 +17,7 @@ const {
   chatWithLocalGuide,
   enhanceHomestayDescription,
   getHostAnalytics,
+  suggestHomestayPrice,
 } = require('../controllers/homestayController');
 
 // Public routes
@@ -45,5 +46,8 @@ router.put('/:id', protect, authorize('owner', 'admin'), updateHomestay);
 
 // Protected: Owner/Admin deletes homestay
 router.delete('/:id', protect, authorize('owner', 'admin'), deleteHomestay);
+
+// Protected: AI Dynamic Pricing Advisor
+router.post('/:id/suggest-price', protect, authorize('owner', 'admin'), suggestHomestayPrice);
 
 module.exports = router;

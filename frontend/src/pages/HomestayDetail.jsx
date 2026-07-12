@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl } from '../services/api'
 
 export default function HomestayDetail() {
   const { id } = useParams()
@@ -210,7 +210,7 @@ export default function HomestayDetail() {
         <div className={`rounded-3xl border overflow-hidden shadow-xl mb-10 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
           <div className="aspect-[21/9] overflow-hidden">
             <img
-              src={homestay.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'}
+              src={resolveImageUrl(homestay.image)}
               alt={homestay.name}
               className="w-full h-full object-cover"
             />

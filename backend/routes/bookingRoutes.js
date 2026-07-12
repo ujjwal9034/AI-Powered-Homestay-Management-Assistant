@@ -12,6 +12,7 @@ const {
   getMyBookings,
   getOwnerBookings,
   updateBookingStatus,
+  draftBookingMessage,
 } = require('../controllers/bookingController');
 
 // Require authentication for all bookings
@@ -24,5 +25,6 @@ router.get('/mine', authorize('customer'), getMyBookings);
 // Owner endpoints
 router.get('/owner', authorize('owner', 'admin'), getOwnerBookings);
 router.patch('/:id/status', authorize('owner', 'admin'), updateBookingStatus);
+router.post('/:id/draft-message', authorize('owner', 'admin'), draftBookingMessage);
 
 module.exports = router;

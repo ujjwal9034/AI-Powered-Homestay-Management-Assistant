@@ -5,6 +5,7 @@
 
 const Booking = require('../models/Booking');
 const Homestay = require('../models/Homestay');
+const { generateHostBookingMessage } = require('../config/gemini');
 
 /**
  * POST /api/bookings
@@ -167,9 +168,47 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/bookings/:id/draft-message
+ * Owner/Admin only — Draft a personalized check-in or check-out message for a booking.
+ */
+const draftBookingMessage = async (req, res) => {
+  try {
+    const { type } = req.body;
+
+    if (!type || !['checkin', 'checkout'].includes(type)) {
+      return res.status(400).json({ success: false, message: 'type must be "checkin" or "checkout"' });
+    }
+
+    const booking = await Booking.findById(req.params.id)
+      .populate('customer', 'name email')
+      .populate('homestay', 'name location owner');
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Only owner of the homestay or admin can draft messages
+    if (booking.homestay.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to manage this booking' });
+    }
+
+    const messageText = await generateHostBookingMessage(booking, type);
+
+    res.status(200).json({
+      success: true,
+      messageText,
+    });
+  } catch (error) {
+    console.error('[draftBookingMessage] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to draft message', error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getMyBookings,
   getOwnerBookings,
   updateBookingStatus,
+  draftBookingMessage,
 };

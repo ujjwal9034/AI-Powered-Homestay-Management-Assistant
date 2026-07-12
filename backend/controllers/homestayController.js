@@ -10,7 +10,7 @@
 const Homestay = require('../models/Homestay');
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
-const { generateTouristChatResponse, generateEnhancedDescription, generateHostInsights } = require('../config/gemini');
+const { generateTouristChatResponse, generateEnhancedDescription, generateHostInsights, generateDynamicPricingRecommendation } = require('../config/gemini');
 
 /**
  * GET /api/homestays
@@ -358,6 +358,41 @@ const getHostAnalytics = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/homestays/:id/suggest-price
+ * Protected (Owner/Admin) — Suggest dynamic pricing for a homestay based on occupancy and seasonality.
+ */
+const suggestHomestayPrice = async (req, res) => {
+  try {
+    const { occupancy, seasonality } = req.body;
+    
+    if (occupancy === undefined || !seasonality) {
+      return res.status(400).json({ success: false, message: 'Occupancy and seasonality are required' });
+    }
+
+    const homestay = await Homestay.findById(req.params.id);
+    if (!homestay) {
+      return res.status(404).json({ success: false, message: 'Homestay not found' });
+    }
+
+    // Only owner or admin can get pricing suggestions
+    if (homestay.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to manage this homestay' });
+    }
+
+    const result = await generateDynamicPricingRecommendation(homestay, occupancy, seasonality);
+
+    res.status(200).json({
+      success: true,
+      suggestedPrice: result.suggestedPrice,
+      rationale: result.rationale
+    });
+  } catch (error) {
+    console.error('[suggestHomestayPrice] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to suggest price', error: error.message });
+  }
+};
+
 module.exports = { 
   getAllHomestays, 
   getMyHomestays, 
@@ -367,5 +402,6 @@ module.exports = {
   deleteHomestay, 
   chatWithLocalGuide,
   enhanceHomestayDescription,
-  getHostAnalytics
+  getHostAnalytics,
+  suggestHomestayPrice
 };

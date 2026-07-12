@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl } from '../services/api'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -32,12 +32,27 @@ export default function OwnerDashboard() {
   const [editingHomestay, setEditingHomestay] = useState(null)
   const [form, setForm] = useState({ name: '', location: '', description: '', amenities: '', pricePerNight: '', image: '' })
   const [formLoading, setFormLoading] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
 
   // Reply state
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [replyLoading, setReplyLoading] = useState(false)
   const [suggestingReviews, setSuggestingReviews] = useState({})
+
+  // Dynamic Pricing Advisor states
+  const [priceAdvisorHomestay, setPriceAdvisorHomestay] = useState(null)
+  const [seasonality, setSeasonality] = useState('')
+  const [occupancy, setOccupancy] = useState(50)
+  const [pricingRecommendation, setPricingRecommendation] = useState(null)
+  const [gettingRecommendation, setGettingRecommendation] = useState(false)
+  const [applyingPrice, setApplyingPrice] = useState(false)
+
+  // AI Host Message Automator states
+  const [messageAutomatorBooking, setMessageAutomatorBooking] = useState(null)
+  const [draftedMessage, setDraftedMessage] = useState('')
+  const [messageType, setMessageType] = useState('')
+  const [draftingMessage, setDraftingMessage] = useState(false)
 
   // Selected homestay for reviews
   const [selectedHomestay, setSelectedHomestay] = useState(null)
@@ -199,6 +214,86 @@ export default function OwnerDashboard() {
     }
   }
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    setImageUploading(true)
+    try {
+      const res = await uploadImage(formData)
+      setForm((prev) => ({ ...prev, image: res.url }))
+      showAction('Image uploaded successfully!')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to upload image', true)
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  const handleGetPriceRecommendation = async () => {
+    if (!priceAdvisorHomestay) return
+    setGettingRecommendation(true)
+    setPricingRecommendation(null)
+    try {
+      const res = await suggestHomestayPrice(priceAdvisorHomestay._id, {
+        seasonality,
+        occupancy: Number(occupancy)
+      })
+      setPricingRecommendation(res.recommendation)
+      showAction('Pricing recommendations generated!')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to get price suggestion', true)
+    } finally {
+      setGettingRecommendation(false)
+    }
+  }
+
+  const handleApplyPrice = async () => {
+    if (!priceAdvisorHomestay || !pricingRecommendation?.recommendedPrice) return
+    setApplyingPrice(true)
+    try {
+      const targetPrice = pricingRecommendation.recommendedPrice
+      await updateHomestay(priceAdvisorHomestay._id, {
+        name: priceAdvisorHomestay.name,
+        location: priceAdvisorHomestay.location,
+        description: priceAdvisorHomestay.description,
+        amenities: priceAdvisorHomestay.amenities.join(', '),
+        pricePerNight: targetPrice,
+        image: priceAdvisorHomestay.image
+      })
+      
+      setHomestays((prev) =>
+        prev.map((h) => (h._id === priceAdvisorHomestay._id ? { ...h, pricePerNight: targetPrice } : h))
+      )
+      
+      showAction(`Price updated to ₹${targetPrice.toLocaleString()}!`)
+      setPriceAdvisorHomestay(null)
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to apply new price', true)
+    } finally {
+      setApplyingPrice(false)
+    }
+  }
+
+  const handleDraftBookingMessage = async (booking, type) => {
+    setMessageAutomatorBooking(booking)
+    setMessageType(type)
+    setDraftingMessage(true)
+    setDraftedMessage('')
+    try {
+      const res = await draftBookingMessage(booking._id, type)
+      setDraftedMessage(res.messageText)
+      showAction('Message draft generated!')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to draft message', true)
+    } finally {
+      setDraftingMessage(false)
+    }
+  }
+
   const handleStatusChange = async (bookingId, status) => {
     try {
       await updateBookingStatus(bookingId, status)
@@ -306,7 +401,7 @@ export default function OwnerDashboard() {
             {homestays.map((h) => (
               <div key={h._id} className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
                 <div className="aspect-[16/9] overflow-hidden">
-                  <img src={h.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'} alt={h.name} className="w-full h-full object-cover" />
+                  <img src={resolveImageUrl(h.image)} alt={h.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-5">
                   <h3 className={`font-heading font-semibold text-lg ${darkMode ? 'text-white' : 'text-gray-900'}`}>{h.name}</h3>
@@ -316,9 +411,10 @@ export default function OwnerDashboard() {
                     <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{h.rating} ({h.totalReviews} reviews)</span>
                   </div>
                   <p className={`text-sm font-bold mt-2 ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>₹{h.pricePerNight?.toLocaleString()}/night</p>
-                  <div className="flex items-center gap-2 mt-4">
+                  <div className="flex items-center gap-2 mt-4 flex-wrap">
                     <button onClick={() => openEditModal(h)} className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-primary-400 hover:bg-primary-900/20 border border-primary-800' : 'text-primary-600 hover:bg-primary-50 border border-primary-200'}`}>✏️ Edit</button>
                     <button onClick={() => { setSelectedHomestay(h._id); setActiveTab('reviews') }} className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-amber-400 hover:bg-amber-900/20 border border-amber-800' : 'text-amber-600 hover:bg-amber-50 border border-amber-200'}`}>💬 Reviews ({(reviews[h._id] || []).length})</button>
+                    <button onClick={() => { setPriceAdvisorHomestay(h); setSeasonality(''); setOccupancy(50); setPricingRecommendation(null); }} className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-green-400 hover:bg-green-900/20 border border-green-800' : 'text-green-600 hover:bg-green-50 border border-green-200'}`}>💰 Pricing</button>
                     <button onClick={() => handleDeleteHomestay(h._id)} className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-red-400 hover:bg-red-900/20 border border-red-800' : 'text-red-500 hover:bg-red-50 border border-red-200'}`}>🗑 Delete</button>
                   </div>
                 </div>
@@ -366,20 +462,37 @@ export default function OwnerDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {booking.status === 'confirmed' && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => handleDraftBookingMessage(booking, 'checkin')}
+                              className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-primary-200 text-primary-500 hover:bg-primary-50 dark:border-primary-800/35 dark:text-primary-400 dark:hover:bg-primary-950/20 transition-colors"
+                            >
+                              ✉️ AI Check-in
+                            </button>
+                            <button
+                              onClick={() => handleDraftBookingMessage(booking, 'checkout')}
+                              className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-primary-200 text-amber-500 hover:bg-amber-50 dark:border-amber-800/35 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
+                            >
+                              ✉️ AI Check-out
+                            </button>
+                          </div>
+                        )}
+
                         {booking.status === 'confirmed' ? (
                           <button
                             onClick={() => handleStatusChange(booking._id, 'cancelled')}
                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/35 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
                           >
-                            ❌ Cancel Booking
+                            ❌ Cancel
                           </button>
                         ) : booking.status === 'cancelled' ? (
                           <button
                             onClick={() => handleStatusChange(booking._id, 'confirmed')}
                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
                           >
-                            ✅ Reinstate Booking
+                            ✅ Reinstate
                           </button>
                         ) : (
                           <span className="text-xs italic text-gray-400">No actions available</span>
@@ -767,8 +880,39 @@ export default function OwnerDashboard() {
                   <input type="number" value={form.pricePerNight} onChange={(e) => setForm({ ...form, pricePerNight: e.target.value })} placeholder="2500" className={inputClass} />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Image URL</label>
+                  <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Image URL / Path</label>
                   <input type="text" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." className={inputClass} />
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-dark-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-550'}`}>
+                  📸 Upload Property Image
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-3 cursor-pointer transition-colors border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500">
+                    {imageUploading ? (
+                      <div className="flex items-center gap-2 text-xs text-primary-500">
+                        <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+                        <span>Uploading image...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <span className="text-lg">📁</span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Click to choose image file</span>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={imageUploading} className="hidden" />
+                  </label>
+
+                  {form.image && (
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 relative group shrink-0">
+                      <img src={resolveImageUrl(form.image)} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setForm({ ...form, image: '' })} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
+                        🗑 Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
@@ -782,6 +926,194 @@ export default function OwnerDashboard() {
                 <button type="button" onClick={() => setShowModal(false)} className={`px-6 py-3 rounded-xl border font-medium transition-colors cursor-pointer ${darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Dynamic Pricing Advisor Modal */}
+      {priceAdvisorHomestay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPriceAdvisorHomestay(null)} />
+          <div className={`relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border shadow-2xl p-8 ${darkMode ? 'bg-dark-800 border-gray-700' : 'bg-white border-gray-200'}`} style={{ animation: 'slideUp 0.3s ease-out' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                💰 AI Pricing Advisor
+              </h2>
+              <button onClick={() => setPriceAdvisorHomestay(null)} className={`text-sm font-semibold p-1 hover:opacity-80`}>✕</button>
+            </div>
+            
+            <p className={`text-xs mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Get AI-driven pricing recommendation for <strong>{priceAdvisorHomestay.name}</strong> based on seasonality and expected occupancy.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Current Price per Night
+                </label>
+                <div className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  ₹{priceAdvisorHomestay.pricePerNight?.toLocaleString()}
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Seasonality Keywords / Events
+                </label>
+                <input
+                  type="text"
+                  value={seasonality}
+                  onChange={(e) => setSeasonality(e.target.value)}
+                  placeholder="e.g. summer vacation spike, diwali peak, monsoon low"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm font-medium mb-1.5">
+                  <label className={darkMode ? 'text-gray-300' : 'text-gray-700'}>Expected Occupancy</label>
+                  <span className="font-bold text-primary-500">{occupancy}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={occupancy}
+                  onChange={(e) => setOccupancy(e.target.value)}
+                  className="w-full accent-primary-500"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                  <span>0% (Empty)</span>
+                  <span>50%</span>
+                  <span>100% (Fully Booked)</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleGetPriceRecommendation}
+                disabled={gettingRecommendation}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg shadow-green-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50"
+              >
+                {gettingRecommendation ? 'Analyzing Market...' : '🤖 Generate AI Price Recommendation'}
+              </button>
+
+              {pricingRecommendation && (
+                <div className={`mt-6 p-5 rounded-xl border ${darkMode ? 'bg-primary-950/20 border-primary-900' : 'bg-primary-50/50 border-primary-100'}`}>
+                  <h4 className={`text-sm font-bold flex items-center gap-1.5 mb-2 ${darkMode ? 'text-primary-400' : 'text-primary-750'}`}>
+                    📊 AI Pricing Strategy Result
+                  </h4>
+                  
+                  <div className="flex justify-between border-b pb-2 mb-3 border-primary-250 dark:border-primary-900">
+                    <span className="text-xs text-gray-500 dark:text-gray-450">Recommended Rate:</span>
+                    <span className={`text-base font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      ₹{pricingRecommendation.recommendedPrice?.toLocaleString()} / night
+                    </span>
+                  </div>
+
+                  <p className={`text-xs leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-705'}`}>
+                    <strong>Justification:</strong> {pricingRecommendation.justification}
+                  </p>
+
+                  <button
+                    onClick={handleApplyPrice}
+                    disabled={applyingPrice}
+                    className="mt-4 w-full py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold shadow transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {applyingPrice ? 'Applying Rate...' : '💰 Apply Recommended Rate Directly'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Host Message Automator Modal */}
+      {messageAutomatorBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMessageAutomatorBooking(null)} />
+          <div className={`relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border shadow-2xl p-8 ${darkMode ? 'bg-dark-800 border-gray-700' : 'bg-white border-gray-200'}`} style={{ animation: 'slideUp 0.3s ease-out' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                ✉️ AI Host Message Automator
+              </h2>
+              <button onClick={() => setMessageAutomatorBooking(null)} className={`text-sm font-semibold p-1 hover:opacity-80`}>✕</button>
+            </div>
+
+            <p className={`text-xs mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Draft a warm, personalized check-in or check-out instruction for guest <strong>{messageAutomatorBooking.customer?.name}</strong>.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDraftBookingMessage(messageAutomatorBooking, 'checkin')}
+                  disabled={draftingMessage}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    messageType === 'checkin'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : darkMode ? 'bg-dark-900 border border-gray-700 text-gray-300' : 'bg-gray-50 border border-gray-200 text-gray-650'
+                  }`}
+                >
+                  🛎 Draft Check-In Instructions
+                </button>
+                <button
+                  onClick={() => handleDraftBookingMessage(messageAutomatorBooking, 'checkout')}
+                  disabled={draftingMessage}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    messageType === 'checkout'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : darkMode ? 'bg-dark-900 border border-gray-700 text-gray-300' : 'bg-gray-50 border border-gray-200 text-gray-650'
+                  }`}
+                >
+                  🔑 Draft Check-Out Instructions
+                </button>
+              </div>
+
+              {draftingMessage && (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+                  <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Drafting personalized message with Gemini AI...
+                  </span>
+                </div>
+              )}
+
+              {draftedMessage && !draftingMessage && (
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Generated Message Draft
+                    </label>
+                    <textarea
+                      value={draftedMessage}
+                      onChange={(e) => setDraftedMessage(e.target.value)}
+                      rows={12}
+                      className={`${inputClass} leading-relaxed font-sans`}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(draftedMessage)
+                        showAction('Message copied to clipboard!')
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+                    >
+                      📋 Copy to Clipboard
+                    </button>
+                    <button
+                      onClick={() => setMessageAutomatorBooking(null)}
+                      className={`px-5 py-3 rounded-xl border text-xs font-semibold cursor-pointer ${
+                        darkMode ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

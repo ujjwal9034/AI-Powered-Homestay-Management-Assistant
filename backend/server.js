@@ -12,6 +12,7 @@ const cors = require('cors');
 const passport = require('passport');
 const connectDB = require('./config/db');
 const { initializePassport } = require('./config/passport');
+const path = require('path');
 const requestLogger = require('./middleware/requestLogger');
 const errorHandler = require('./middleware/errorHandler');
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -20,6 +21,7 @@ const authRoutes = require('./routes/authRoutes');
 const homestayRoutes = require('./routes/homestayRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -28,6 +30,9 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
+
+// Serve static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── Passport Initialization ────────────────────────────────────────────────────
 initializePassport();
@@ -40,6 +45,7 @@ app.use('/api/homestays', homestayRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ─── Root Route ─────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {

@@ -7,7 +7,7 @@ import Hero from '../components/Hero'
 import FeatureCard from '../components/FeatureCard'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
-import { fetchHomestays } from '../services/api'
+import { fetchHomestays, resolveImageUrl } from '../services/api'
 
 const features = [
   {
@@ -117,7 +117,7 @@ export default function Home() {
                 >
                   <div className="aspect-[16/10] overflow-hidden">
                     <img
-                      src={h.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'}
+                      src={resolveImageUrl(h.image)}
                       alt={h.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

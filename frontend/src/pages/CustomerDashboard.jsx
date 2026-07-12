@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings } from '../services/api'
+import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings, resolveImageUrl } from '../services/api'
 
 export default function CustomerDashboard() {
   const { darkMode } = useTheme()
@@ -150,7 +150,7 @@ export default function CustomerDashboard() {
               >
                 <div className="aspect-[16/10] overflow-hidden">
                   <img
-                    src={h.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'}
+                    src={resolveImageUrl(h.image)}
                     alt={h.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -212,7 +212,7 @@ export default function CustomerDashboard() {
                 {/* Image */}
                 <div className="w-full md:w-48 aspect-[16/10] md:aspect-auto overflow-hidden bg-gray-100">
                   <img
-                    src={booking.homestay?.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400'}
+                    src={resolveImageUrl(booking.homestay?.image)}
                     alt={booking.homestay?.name || 'Property'}
                     className="w-full h-full object-cover"
                   />
