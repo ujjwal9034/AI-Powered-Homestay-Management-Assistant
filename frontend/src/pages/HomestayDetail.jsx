@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking } from '../services/api'
 
 export default function HomestayDetail() {
   const { id } = useParams()
@@ -21,8 +21,14 @@ export default function HomestayDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Sidebar Tab control: 'review' or 'chat'
-  const [sidebarTab, setSidebarTab] = useState('chat') // default to chat for AI-powered assistant focus!
+  // Sidebar Tab control: 'booking', 'chat', or 'review'
+  const [sidebarTab, setSidebarTab] = useState('booking') // default to booking for high-impact action!
+
+  // Booking states
+  const [bookingCheckIn, setBookingCheckIn] = useState('')
+  const [bookingCheckOut, setBookingCheckOut] = useState('')
+  const [bookingGuests, setBookingGuests] = useState(1)
+  const [bookingLoading, setBookingLoading] = useState(false)
 
   // Chat states
   const [chatMessages, setChatMessages] = useState([
@@ -113,6 +119,29 @@ export default function HomestayDetail() {
       ])
     } finally {
       setChatLoading(false)
+    }
+  }
+
+  const handleCreateBooking = async (e) => {
+    e.preventDefault()
+    if (!bookingCheckIn || !bookingCheckOut) return
+
+    setBookingLoading(true)
+    try {
+      await createBooking({
+        homestayId: id,
+        checkIn: bookingCheckIn,
+        checkOut: bookingCheckOut,
+        guestsCount: bookingGuests,
+      })
+      showAction('Booking confirmed! Redirecting...')
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 1500)
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to create booking', true)
+    } finally {
+      setBookingLoading(false)
     }
   }
 
@@ -310,6 +339,16 @@ export default function HomestayDetail() {
               {/* Tab Selector */}
               <div className={`flex gap-1 p-1 rounded-xl mb-5 ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
                 <button
+                  onClick={() => setSidebarTab('booking')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
+                    sidebarTab === 'booking'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📅 Book
+                </button>
+                <button
                   onClick={() => setSidebarTab('chat')}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
                     sidebarTab === 'chat'
@@ -330,6 +369,143 @@ export default function HomestayDetail() {
                   📝 Review
                 </button>
               </div>
+
+              {/* Booking Tab */}
+              {sidebarTab === 'booking' && (
+                <div>
+                  <h3 className={`font-heading font-bold text-sm mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Plan Your Stay 📅
+                  </h3>
+                  <form onSubmit={handleCreateBooking} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Check-In
+                        </label>
+                        <input
+                          type="date"
+                          value={bookingCheckIn}
+                          onChange={(e) => setBookingCheckIn(e.target.value)}
+                          required
+                          min={new Date().toISOString().split('T')[0]}
+                          className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
+                            darkMode
+                              ? 'bg-dark-900 border-gray-600 text-gray-250 focus:ring-primary-500/30'
+                              : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Check-Out
+                        </label>
+                        <input
+                          type="date"
+                          value={bookingCheckOut}
+                          onChange={(e) => setBookingCheckOut(e.target.value)}
+                          required
+                          min={bookingCheckIn || new Date().toISOString().split('T')[0]}
+                          className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
+                            darkMode
+                              ? 'bg-dark-900 border-gray-600 text-gray-250 focus:ring-primary-500/30'
+                              : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Number of Guests
+                      </label>
+                      <select
+                        value={bookingGuests}
+                        onChange={(e) => setBookingGuests(Number(e.target.value))}
+                        className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
+                          darkMode
+                            ? 'bg-dark-900 border-gray-600 text-gray-250 focus:ring-primary-500/30'
+                            : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                        }`}
+                      >
+                        {[1, 2, 3, 4, 5, 6].map((num) => (
+                          <option key={num} value={num}>{num} Guest{num > 1 ? 's' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Price Breakdown Calculation */}
+                    {bookingCheckIn && bookingCheckOut && (
+                      (() => {
+                        const days = Math.ceil((new Date(bookingCheckOut) - new Date(bookingCheckIn)) / (1000 * 60 * 60 * 24))
+                        if (days <= 0) {
+                          return (
+                            <p className="text-xs text-red-500 font-medium">Check-out must be after check-in.</p>
+                          )
+                        }
+                        const base = days * homestay.pricePerNight
+                        const fee = Math.round(base * 0.05)
+                        const tax = Math.round(base * 0.12)
+                        const total = base + fee + tax
+
+                        return (
+                          <div className={`rounded-xl border p-4 space-y-2 text-xs ${darkMode ? 'bg-dark-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex justify-between">
+                              <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                                ₹{homestay.pricePerNight?.toLocaleString()} x {days} night{days > 1 ? 's' : ''}
+                              </span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                ₹{base?.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>StayWise Service Fee (5%)</span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                ₹{fee?.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Occupancy Taxes (12%)</span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                ₹{tax?.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className={`flex justify-between pt-2 border-t font-semibold text-sm ${darkMode ? 'border-gray-700 text-white' : 'border-gray-200 text-gray-900'}`}>
+                              <span>Total Bill</span>
+                              <span className={darkMode ? 'text-primary-400' : 'text-primary-600'}>
+                                ₹{total?.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })()
+                    )}
+
+                    {/* Action button */}
+                    {isAuthenticated ? (
+                      user?.role === 'customer' ? (
+                        <button
+                          type="submit"
+                          disabled={bookingLoading}
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer text-center text-xs"
+                        >
+                          {bookingLoading ? 'Processing Booking...' : '⚡ Instant Book'}
+                        </button>
+                      ) : (
+                        <div className={`p-3 rounded-xl text-center text-xs border ${darkMode ? 'border-amber-800/30 bg-amber-900/10 text-amber-400' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
+                          ⚠️ Only guest accounts can make homestay bookings.
+                        </div>
+                      )
+                    ) : (
+                      <Link
+                        to="/login"
+                        className="block w-full py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-center font-semibold text-xs shadow-md transition-colors"
+                      >
+                        Sign In to Book Stay
+                      </Link>
+                    )}
+                  </form>
+                </div>
+              )}
 
               {/* Chat tab */}
               {sidebarTab === 'chat' && (

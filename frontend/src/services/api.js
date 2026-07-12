@@ -163,4 +163,25 @@ export const enhanceHomestayDescription = async (data) => {
   return response.data;
 };
 
+// Booking APIs
+export const createBooking = async (data) => {
+  const response = await api.post('/api/bookings', data);
+  return response.data;
+};
+
+export const fetchMyBookings = async () => {
+  const response = await api.get('/api/bookings/mine');
+  return response.data;
+};
+
+export const fetchOwnerBookings = async () => {
+  const response = await api.get('/api/bookings/owner');
+  return response.data;
+};
+
+export const updateBookingStatus = async (id, status) => {
+  const response = await api.patch(`/api/bookings/${id}/status`, { status });
+  return response.data;
+};
+
 export default api;

@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus } from '../services/api'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -17,6 +17,7 @@ export default function OwnerDashboard() {
 
   const [homestays, setHomestays] = useState([])
   const [reviews, setReviews] = useState({})
+  const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('properties')
   const [actionMsg, setActionMsg] = useState(null)
@@ -47,9 +48,13 @@ export default function OwnerDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const hRes = await fetchMyHomestays()
+      const [hRes, bRes] = await Promise.all([
+        fetchMyHomestays(),
+        fetchOwnerBookings(),
+      ])
       const myHomestays = hRes.data || []
       setHomestays(myHomestays)
+      setBookings(bRes.data || [])
 
       // Load reviews for all homestays
       const reviewMap = {}
@@ -191,6 +196,18 @@ export default function OwnerDashboard() {
     }
   }
 
+  const handleStatusChange = async (bookingId, status) => {
+    try {
+      await updateBookingStatus(bookingId, status)
+      setBookings((prev) =>
+        prev.map((b) => (b._id === bookingId ? { ...b, status } : b))
+      )
+      showAction(`Booking successfully ${status}!`)
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to update booking status', true)
+    }
+  }
+
   const renderStars = (rating) => (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
@@ -254,9 +271,9 @@ export default function OwnerDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'My Properties', value: homestays.length, icon: '🏡' },
+            { label: 'Total Bookings', value: bookings.length, icon: '📅' },
             { label: 'Total Reviews', value: totalReviews, icon: '⭐' },
             { label: 'Avg Rating', value: avgRating, icon: '📊' },
-            { label: 'Pending Replies', value: pendingCount, icon: '💬' },
           ].map(({ label, value, icon }) => (
             <div key={label} className={`rounded-2xl border p-5 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               <span className="text-2xl">{icon}</span>
@@ -270,6 +287,7 @@ export default function OwnerDashboard() {
         <div className={`flex gap-1 p-1 rounded-xl mb-8 w-fit ${darkMode ? 'bg-dark-800' : 'bg-gray-100'}`}>
           {[
             { id: 'properties', label: '🏡 My Properties' },
+            { id: 'bookings', label: '📅 Bookings' },
             { id: 'reviews', label: '💬 Guest Reviews' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setActiveTab(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
@@ -309,6 +327,80 @@ export default function OwnerDashboard() {
                 <button onClick={openAddModal} className="mt-3 text-sm text-primary-500 hover:text-primary-600 font-medium cursor-pointer">Add your first homestay →</button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Bookings Tab */}
+        {activeTab === 'bookings' && (
+          <div className="space-y-4">
+            <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              <div className={`px-6 py-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                <h2 className={`font-heading font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Guest Reservations</h2>
+                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Manage bookings made on your properties</p>
+              </div>
+
+              <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                {bookings.map((booking) => (
+                  <div key={booking._id} className={`p-6 ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-semibold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
+                            🏡 {booking.homestay?.name || 'Property'}
+                          </span>
+                          <span className={`text-xs ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
+                          <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            👤 {booking.customer?.name} ({booking.customer?.email})
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                          <div>📅 {new Date(booking.checkIn).toLocaleDateString()} - {new Date(booking.checkOut).toLocaleDateString()}</div>
+                          <div>🌙 {booking.nights} night{booking.nights > 1 ? 's' : ''}</div>
+                          <div>👥 {booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''}</div>
+                          <div className="font-semibold text-primary-500">💰 ₹{booking.totalPrice?.toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {booking.status === 'confirmed' ? (
+                          <button
+                            onClick={() => handleStatusChange(booking._id, 'cancelled')}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/35 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+                          >
+                            ❌ Cancel Booking
+                          </button>
+                        ) : booking.status === 'cancelled' ? (
+                          <button
+                            onClick={() => handleStatusChange(booking._id, 'confirmed')}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
+                          >
+                            ✅ Reinstate Booking
+                          </button>
+                        ) : (
+                          <span className="text-xs italic text-gray-400">No actions available</span>
+                        )}
+
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          booking.status === 'confirmed'
+                            ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                            : darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-650'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {bookings.length === 0 && (
+                  <div className="flex flex-col items-center py-16">
+                    <span className="text-4xl mb-3">📅</span>
+                    <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No guest reservations booked yet</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

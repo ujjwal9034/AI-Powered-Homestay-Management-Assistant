@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { fetchHomestays, fetchMyReviews, deleteReview } from '../services/api'
+import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings } from '../services/api'
 
 export default function CustomerDashboard() {
   const { darkMode } = useTheme()
@@ -18,6 +18,7 @@ export default function CustomerDashboard() {
 
   const [homestays, setHomestays] = useState([])
   const [myReviews, setMyReviews] = useState([])
+  const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionMsg, setActionMsg] = useState(null)
   const [activeTab, setActiveTab] = useState('browse')
@@ -25,12 +26,14 @@ export default function CustomerDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [hRes, rRes] = await Promise.all([
+        const [hRes, rRes, bRes] = await Promise.all([
           fetchHomestays(),
           fetchMyReviews(),
+          fetchMyBookings(),
         ])
         setHomestays(hRes.data || [])
         setMyReviews(rRes.data || [])
+        setBookings(bRes.data || [])
       } catch (err) {
         console.warn('Failed to load data:', err.message)
       } finally {
@@ -104,9 +107,10 @@ export default function CustomerDashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Homestays to Explore', value: homestays.length, icon: '🏡' },
+            { label: 'My Bookings', value: bookings.length, icon: '📅' },
             { label: 'My Reviews', value: myReviews.length, icon: '⭐' },
             { label: 'Avg Rating Given', value: myReviews.length > 0 ? (myReviews.reduce((s, r) => s + r.rating, 0) / myReviews.length).toFixed(1) : '—', icon: '📊' },
           ].map(({ label, value, icon }) => (
@@ -122,6 +126,7 @@ export default function CustomerDashboard() {
         <div className={`flex gap-1 p-1 rounded-xl mb-8 w-fit ${darkMode ? 'bg-dark-800' : 'bg-gray-100'}`}>
           {[
             { id: 'browse', label: '🏡 Browse Homestays' },
+            { id: 'bookings', label: '📅 My Bookings' },
             { id: 'reviews', label: '⭐ My Reviews' },
           ].map(({ id, label }) => (
             <button
@@ -189,6 +194,97 @@ export default function CustomerDashboard() {
               <div className="col-span-full flex flex-col items-center py-16">
                 <span className="text-4xl mb-3">🏡</span>
                 <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No homestays available yet</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Bookings Tab */}
+        {activeTab === 'bookings' && (
+          <div className="space-y-4">
+            {bookings.map((booking) => (
+              <div
+                key={booking._id}
+                className={`rounded-2xl border overflow-hidden flex flex-col md:flex-row ${
+                  darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'
+                }`}
+              >
+                {/* Image */}
+                <div className="w-full md:w-48 aspect-[16/10] md:aspect-auto overflow-hidden bg-gray-100">
+                  <img
+                    src={booking.homestay?.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400'}
+                    alt={booking.homestay?.name || 'Property'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Booking details */}
+                <div className="flex-1 p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div>
+                        <h3 className={`text-base font-semibold font-heading ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {booking.homestay?.name || 'Homestay'}
+                        </h3>
+                        <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          📍 {booking.homestay?.location}
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                        booking.status === 'confirmed'
+                          ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                          : booking.status === 'cancelled'
+                          ? darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'
+                          : darkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 py-3 border-y border-dashed border-gray-200 dark:border-gray-750">
+                      <div>
+                        <span className={`block text-[10px] uppercase font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Check-in</span>
+                        <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {new Date(booking.checkIn).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`block text-[10px] uppercase font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Check-out</span>
+                        <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {new Date(booking.checkOut).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className={`block text-[10px] uppercase font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Nights</span>
+                        <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{booking.nights} night{booking.nights > 1 ? 's' : ''}</span>
+                      </div>
+                      <div>
+                        <span className={`block text-[10px] uppercase font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Guests</span>
+                        <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4">
+                    <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                    </span>
+                    <span className={`text-sm font-bold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
+                      Total Price: ₹{booking.totalPrice?.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {bookings.length === 0 && (
+              <div className={`rounded-2xl border border-dashed p-16 text-center ${darkMode ? 'border-gray-700 bg-dark-850' : 'border-gray-200 bg-gray-50/20'}`}>
+                <span className="text-4xl block mb-3">📅</span>
+                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  No bookings scheduled. Time to plan your next vacation!
+                </p>
+                <button onClick={() => setActiveTab('browse')} className="mt-3 text-sm text-primary-500 hover:text-primary-600 font-semibold cursor-pointer">
+                  Browse available homestays →
+                </button>
               </div>
             )}
           </div>
