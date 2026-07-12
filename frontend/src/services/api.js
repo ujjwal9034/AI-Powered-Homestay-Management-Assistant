@@ -1,8 +1,8 @@
 /**
  * API Service — Axios instance & API helpers for StayWise frontend.
- * Includes review CRUD + authentication endpoints.
+ * Includes review CRUD, homestay CRUD, admin APIs, and authentication.
  *
- * Week 6 — Added logout, Google OAuth URL helper.
+ * Multi-Role System: Customer, Owner, Admin
  */
 
 import axios from 'axios';
@@ -28,98 +28,123 @@ api.interceptors.request.use((config) => {
 
 // ─── Auth API ───────────────────────────────────────────────────────────────────
 
-/**
- * Register a new user account.
- */
 export const registerUser = async (userData) => {
   const response = await api.post('/api/auth/register', userData);
   return response.data;
 };
 
-/**
- * Login with email and password.
- */
 export const loginUser = async (credentials) => {
   const response = await api.post('/api/auth/login', credentials);
   return response.data;
 };
 
-/**
- * Logout the current user.
- */
 export const logoutUser = async () => {
   try {
     const response = await api.post('/api/auth/logout');
     return response.data;
   } catch {
-    // If logout fails (e.g., token already expired), still return success
     return { success: true, message: 'Logged out locally' };
   }
 };
 
-/**
- * Get current user profile.
- */
 export const getMe = async () => {
   const response = await api.get('/api/auth/me');
   return response.data;
 };
 
-/**
- * Get the Google OAuth initiation URL.
- */
 export const getGoogleAuthUrl = () => {
   const baseUrl = API_BASE_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
   return `${baseUrl}/api/auth/google`;
 };
 
+// ─── Homestay API ───────────────────────────────────────────────────────────────
+
+export const fetchHomestays = async () => {
+  const response = await api.get('/api/homestays');
+  return response.data;
+};
+
+export const fetchHomestayById = async (id) => {
+  const response = await api.get(`/api/homestays/${id}`);
+  return response.data;
+};
+
+export const fetchMyHomestays = async () => {
+  const response = await api.get('/api/homestays/mine');
+  return response.data;
+};
+
+export const createHomestay = async (data) => {
+  const response = await api.post('/api/homestays', data);
+  return response.data;
+};
+
+export const updateHomestay = async (id, data) => {
+  const response = await api.put(`/api/homestays/${id}`, data);
+  return response.data;
+};
+
+export const deleteHomestay = async (id) => {
+  const response = await api.delete(`/api/homestays/${id}`);
+  return response.data;
+};
+
 // ─── Review API ─────────────────────────────────────────────────────────────────
 
-/**
- * Fetch all reviews.
- */
-export const fetchReviews = async () => {
+export const fetchMyReviews = async () => {
+  const response = await api.get('/api/reviews/mine');
+  return response.data;
+};
+
+export const fetchHomestayReviews = async (homestayId) => {
+  const response = await api.get(`/api/reviews/homestay/${homestayId}`);
+  return response.data;
+};
+
+export const fetchAllReviews = async () => {
   const response = await api.get('/api/reviews');
   return response.data;
 };
 
-/**
- * Fetch a single review by ID.
- */
-export const fetchReviewById = async (id) => {
-  const response = await api.get(`/api/reviews/${id}`);
+export const createReview = async (data) => {
+  const response = await api.post('/api/reviews', data);
   return response.data;
 };
 
-/**
- * Create a new review.
- */
-export const createReview = async (reviewData) => {
-  const response = await api.post('/api/reviews', reviewData);
+export const updateReview = async (id, data) => {
+  const response = await api.put(`/api/reviews/${id}`, data);
   return response.data;
 };
 
-/**
- * Full-update a review (PUT).
- */
-export const updateReview = async (id, reviewData) => {
-  const response = await api.put(`/api/reviews/${id}`, reviewData);
+export const replyToReview = async (id, text) => {
+  const response = await api.patch(`/api/reviews/${id}/reply`, { text });
   return response.data;
 };
 
-/**
- * Partially update a review (PATCH).
- */
-export const patchReview = async (id, fields) => {
-  const response = await api.patch(`/api/reviews/${id}`, fields);
-  return response.data;
-};
-
-/**
- * Delete a review.
- */
 export const deleteReview = async (id) => {
   const response = await api.delete(`/api/reviews/${id}`);
+  return response.data;
+};
+
+// ─── Admin API ──────────────────────────────────────────────────────────────────
+
+export const fetchAdminStats = async () => {
+  const response = await api.get('/api/admin/stats');
+  return response.data;
+};
+
+export const fetchAllUsers = async () => {
+  const response = await api.get('/api/admin/users');
+  return response.data;
+};
+
+export const updateUserRole = async (id, role) => {
+  const response = await api.patch(`/api/admin/users/${id}`, { role });
+  return response.data;
+};
+
+export const deleteUser = async (id) => {
+  const response = await api.delete(`/api/admin/users/${id}`);
   return response.data;
 };
 

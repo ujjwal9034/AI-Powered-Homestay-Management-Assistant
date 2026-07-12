@@ -87,9 +87,11 @@ export default function Profile() {
                 <span className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize ${
                   user?.role === 'admin'
                     ? darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'
-                    : darkMode ? 'bg-primary-900/30 text-primary-400' : 'bg-primary-50 text-primary-600'
+                    : user?.role === 'owner'
+                    ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                    : darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'
                 }`}>
-                  {user?.role || 'owner'}
+                  {user?.role === 'owner' ? 'Host' : user?.role === 'customer' ? 'Guest' : user?.role || 'Guest'}
                 </span>
               </div>
 

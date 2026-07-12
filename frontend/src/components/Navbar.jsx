@@ -109,8 +109,19 @@ export default function Navbar() {
                     style={{ animation: 'slideDown 0.2s ease-out' }}
                   >
                     <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user?.name}</p>
-                      <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{user?.email}</p>
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <p className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user?.name}</p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                          user?.role === 'admin'
+                            ? darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'
+                            : user?.role === 'owner'
+                            ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                            : darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                          {user?.role === 'owner' ? 'Host' : user?.role === 'customer' ? 'Guest' : user?.role}
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-1 truncate ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{user?.email}</p>
                     </div>
                     <div className="py-1">
                       <Link
@@ -202,7 +213,18 @@ export default function Navbar() {
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div>
-                    <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user?.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user?.name}</p>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                        user?.role === 'admin'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : user?.role === 'owner'
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {user?.role === 'owner' ? 'Host' : user?.role === 'customer' ? 'Guest' : user?.role}
+                      </span>
+                    </div>
                     <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{user?.email}</p>
                   </div>
                 </div>

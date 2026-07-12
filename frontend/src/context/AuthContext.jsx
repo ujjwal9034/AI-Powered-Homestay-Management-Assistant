@@ -80,8 +80,8 @@ export function AuthProvider({ children }) {
   /**
    * Register a new account
    */
-  const register = async (name, email, password) => {
-    const result = await registerUser({ name, email, password })
+  const register = async (name, email, password, role) => {
+    const result = await registerUser({ name, email, password, role })
     if (result.success) {
       const userData = result.data
       setUser(userData)

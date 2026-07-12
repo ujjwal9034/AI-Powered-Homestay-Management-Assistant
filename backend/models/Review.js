@@ -1,31 +1,27 @@
 /**
  * Review Model (Mongoose Schema)
- * Defines the structure for guest reviews stored in MongoDB.
+ * Represents a customer review for a homestay property.
  *
- * Fields:
- *   - guest        : Name of the guest who left the review
- *   - platform     : Platform the review came from (Airbnb, Booking.com, Google)
- *   - rating       : Numeric rating between 1 and 5
- *   - text         : Review content / comment
- *   - date         : Human-readable date string (e.g. "2 hours ago")
- *   - status       : Review status — "pending", "replied", or "flagged"
- *   - aiSuggestion : AI-generated response suggestion (nullable)
- *   - createdAt    : Timestamp when the review was created
+ * Each review is linked to:
+ *   - customer: The user who wrote the review
+ *   - homestay: The property being reviewed
+ *
+ * Owner replies are stored inline in the ownerReply subdocument.
  */
 
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema(
   {
-    guest: {
-      type: String,
-      required: [true, 'Guest name is required'],
-      trim: true,
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Customer reference is required'],
     },
-    platform: {
-      type: String,
-      required: [true, 'Platform is required'],
-      trim: true,
+    homestay: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Homestay',
+      required: [true, 'Homestay reference is required'],
     },
     rating: {
       type: Number,
@@ -38,28 +34,27 @@ const reviewSchema = new mongoose.Schema(
       required: [true, 'Review text is required'],
       trim: true,
     },
-    date: {
-      type: String,
-      default: 'Just now',
-    },
     status: {
       type: String,
       enum: ['pending', 'replied', 'flagged'],
       default: 'pending',
     },
+    ownerReply: {
+      text: { type: String, default: null },
+      repliedAt: { type: Date, default: null },
+    },
     aiSuggestion: {
       type: String,
       default: null,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
   {
-    // Adds createdAt and updatedAt timestamps automatically
     timestamps: true,
   }
 );
+
+// Indexes for fast lookups
+reviewSchema.index({ customer: 1 });
+reviewSchema.index({ homestay: 1 });
 
 module.exports = mongoose.model('Review', reviewSchema);

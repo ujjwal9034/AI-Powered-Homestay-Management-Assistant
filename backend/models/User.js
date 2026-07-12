@@ -2,8 +2,10 @@
  * User Model (Mongoose Schema)
  * Defines the structure for user accounts with password hashing.
  *
- * Week 6 — Enhanced with Google OAuth support (googleId, avatar).
- *          Password is conditionally required (not needed for OAuth users).
+ * Roles: customer (default), owner, admin
+ * - customer: Can browse homestays and write reviews
+ * - owner:    Can manage homestays and reply to reviews
+ * - admin:    Can manage users, homestays, and all reviews
  */
 
 const mongoose = require('mongoose');
@@ -32,8 +34,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['owner', 'admin'],
-      default: 'owner',
+      enum: ['customer', 'owner', 'admin'],
+      default: 'customer',
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: null,
     },
     googleId: {
       type: String,

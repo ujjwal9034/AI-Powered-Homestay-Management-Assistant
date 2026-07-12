@@ -2,7 +2,8 @@
  * Auth Controller
  * Handles user registration, login, logout, profile retrieval, and Google OAuth.
  *
- * Week 6 — Added logout endpoint and Google OAuth callback handler.
+ * Registration accepts an optional `role` field (customer or owner).
+ * Admin role is never self-assignable.
  */
 
 const jwt = require('jsonwebtoken');
@@ -20,12 +21,11 @@ const generateToken = (id) => {
 /**
  * POST /api/auth/register
  * Register a new user account.
- *
- * Validation is handled by express-validator middleware (see validators.js).
+ * Accepts optional role: 'customer' (default) or 'owner'.
  */
 const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -36,8 +36,11 @@ const register = async (req, res) => {
       });
     }
 
+    // Validate role — only customer or owner can be self-assigned
+    const validRole = ['customer', 'owner'].includes(role) ? role : 'customer';
+
     // Create user (password is hashed automatically by pre-save hook)
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password, role: validRole });
 
     // Generate JWT token
     const token = generateToken(user._id);
@@ -75,8 +78,6 @@ const register = async (req, res) => {
 /**
  * POST /api/auth/login
  * Authenticate user and return token.
- *
- * Validation is handled by express-validator middleware (see validators.js).
  */
 const login = async (req, res) => {
   try {
@@ -138,9 +139,6 @@ const login = async (req, res) => {
 /**
  * POST /api/auth/logout
  * Logout the current user.
- *
- * Since JWT is stateless, this endpoint acknowledges the logout
- * and the client is responsible for removing the token.
  */
 const logout = async (req, res) => {
   res.status(200).json({
@@ -165,6 +163,7 @@ const getMe = async (req, res) => {
         email: user.email,
         role: user.role,
         avatar: user.avatar,
+        phone: user.phone,
         googleId: user.googleId ? true : false,
         createdAt: user.createdAt,
       },

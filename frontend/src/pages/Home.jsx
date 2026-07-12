@@ -1,32 +1,34 @@
 /**
- * Home — Landing page with Hero, Features, How It Works, Testimonials, and CTA.
+ * Home — Landing page with Hero, Featured Homestays, Features, How It Works, Testimonials, and CTA.
  * All sections support dark mode through conditional styling.
  */
+import { useState, useEffect } from 'react'
 import Hero from '../components/Hero'
 import FeatureCard from '../components/FeatureCard'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import { fetchHomestays } from '../services/api'
 
 const features = [
   {
     icon: '⭐',
     title: 'Review Management',
     description:
-      'Centralize and monitor guest reviews from multiple booking platforms. Track sentiment trends, flag urgent feedback, and never miss an opportunity to improve your hospitality.',
+      'Centralize and monitor guest reviews. Write reviews as a customer, view aggregated ratings, and build authentic connections.',
     accent: 'primary',
   },
   {
     icon: '🤖',
     title: 'AI Response Suggestions',
     description:
-      'Generate thoughtful, personalized reply drafts for every guest review in seconds. Our AI understands context, tone, and your brand voice to craft responses that build trust.',
+      'Generate thoughtful, personalized reply drafts for guest reviews. Our AI understands context and sentiment to craft high-quality responses.',
     accent: 'accent',
   },
   {
     icon: '🗺️',
-    title: 'Tourist Assistance',
+    title: 'Multi-Role Portals',
     description:
-      'Equip your guests with AI-powered local guides — from hidden trails and top restaurants to transport tips. Delight visitors before they even ask, boosting 5-star reviews.',
+      'Distinct custom dashboards for Guests to review and browse, Hosts to reply and list properties, and Admins to manage the platform.',
     accent: 'teal',
   },
 ]
@@ -51,10 +53,105 @@ const testimonials = [
 
 export default function Home() {
   const { darkMode } = useTheme()
+  const [featuredHomestays, setFeaturedHomestays] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await fetchHomestays()
+        // Sort by highest rating first and take top 3
+        const sorted = (result.data || [])
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 3)
+        setFeaturedHomestays(sorted)
+      } catch (err) {
+        console.warn('Failed to load featured homestays:', err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const renderStars = (rating) => (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <svg key={i} className={`w-3.5 h-3.5 ${i < rating ? 'text-amber-400' : 'text-gray-600'}`} fill="currentColor" viewBox="0 0 20 20">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </div>
+  )
 
   return (
     <>
       <Hero />
+
+      {/* Featured Homestays Section */}
+      <section className={`py-20 ${darkMode ? 'bg-dark-850' : 'bg-gray-50/50'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold tracking-wider uppercase mb-4 ${darkMode ? 'bg-primary-900/30 text-primary-400' : 'bg-primary-50 text-primary-600'}`}>
+              Featured Homestays
+            </span>
+            <h2 className={`text-3xl sm:text-4xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Top-Rated Getaways
+            </h2>
+            <p className={`mt-4 text-sm leading-relaxed ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Handpicked premium properties with exceptional guest reviews and dedicated host support.
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredHomestays.map((h) => (
+                <Link
+                  to={`/homestays/${h._id}`}
+                  key={h._id}
+                  className={`group rounded-3xl border overflow-hidden hover:shadow-xl transition-all duration-300 ${darkMode ? 'border-gray-700 bg-dark-800 hover:border-primary-700' : 'border-gray-200 bg-white hover:border-primary-300'}`}
+                >
+                  <div className="aspect-[16/10] overflow-hidden">
+                    <img
+                      src={h.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'}
+                      alt={h.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-6">
+                    <h3 className={`font-heading font-semibold text-lg group-hover:text-primary-500 transition-colors ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {h.name}
+                    </h3>
+                    <p className={`text-sm mt-1 flex items-center gap-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      📍 {h.location}
+                    </p>
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-1.5">
+                        {renderStars(Math.round(h.rating))}
+                        <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                          ({h.totalReviews})
+                        </span>
+                      </div>
+                      <span className={`text-sm font-bold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
+                        ₹{h.pricePerNight?.toLocaleString()}/night
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {featuredHomestays.length === 0 && (
+                <div className="col-span-full text-center py-10">
+                  <p className={darkMode ? 'text-gray-500' : 'text-gray-400'}>No homestays created yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Features section */}
       <section className="py-20 sm:py-28">
@@ -98,18 +195,18 @@ export default function Home() {
             {[
               {
                 step: '01',
-                title: 'Connect Your Listings',
-                desc: 'Link your Airbnb, Booking.com, and other platform accounts in minutes. We securely sync all your property data and guest reviews.',
+                title: 'Register Your Account',
+                desc: 'Sign up as a Guest to book/review properties, or as an Owner to create a homestay and list amenities.',
               },
               {
                 step: '02',
-                title: 'Let AI Analyze & Respond',
-                desc: 'Our AI engine processes incoming reviews, identifies sentiment patterns, and generates contextual reply suggestions ready for your approval.',
+                title: 'Submit Reviews & Share',
+                desc: 'Guests leave reviews and ratings. AI assists hosts with instant reply suggestions.',
               },
               {
                 step: '03',
-                title: 'Delight Your Guests',
-                desc: 'Publish polished responses instantly and provide guests with AI-curated local guides, boosting satisfaction and earning more 5-star reviews.',
+                title: 'Interact & Build Trust',
+                desc: 'Hosts reply to reviews, addressing guest suggestions to improve hospitality and listing quality.',
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="relative pl-16">
@@ -163,10 +260,10 @@ export default function Home() {
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImEiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNhKSIvPjwvc3ZnPg==')] opacity-50" />
             <div className="relative">
               <h2 className="text-3xl sm:text-4xl font-heading font-bold text-white mb-4">
-                Ready to Transform Your Homestay?
+                Ready to Experience StayWise?
               </h2>
               <p className="text-white/80 text-lg max-w-xl mx-auto mb-8">
-                Join hundreds of homestay owners who are already saving time and delighting guests with AI-powered management.
+                Join our premium community today to browse exquisite properties or manage your homestays with state-of-the-art tools.
               </p>
               <Link
                 to="/login"

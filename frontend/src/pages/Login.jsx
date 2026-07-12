@@ -20,6 +20,7 @@ export default function Login() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +37,7 @@ export default function Login() {
           setLoading(false)
           return
         }
-        result = await register(name, email, password)
+        result = await register(name, email, password, role)
       } else {
         result = await login(email, password)
       }
@@ -108,20 +109,55 @@ export default function Login() {
           )}
 
           <form className="space-y-5" onSubmit={handleSubmit}>
-            {isSignUp && (
-              <div>
-                <label htmlFor="name" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ujjwal Singh"
-                  className={inputClass}
-                />
-              </div>
+             {isSignUp && (
+              <>
+                <div>
+                  <label htmlFor="name" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ujjwal Singh"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    I want to register as a:
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRole('customer')}
+                      className={`py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                        role === 'customer'
+                          ? 'bg-primary-500 border-primary-500 text-white shadow-md shadow-primary-500/20'
+                          : darkMode
+                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                          : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      👤 Guest
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('owner')}
+                      className={`py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                        role === 'owner'
+                          ? 'bg-primary-500 border-primary-500 text-white shadow-md shadow-primary-500/20'
+                          : darkMode
+                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                          : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      🏠 Owner
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
             <div>

@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import OAuthCallback from './pages/OAuthCallback'
+import HomestayDetail from './pages/HomestayDetail'
 
 function App() {
   const { darkMode } = useTheme()
@@ -28,6 +29,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
+          <Route path="/homestays/:id" element={<HomestayDetail />} />
           <Route
             path="/dashboard"
             element={
