@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics } from '../services/api'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -18,6 +18,7 @@ export default function OwnerDashboard() {
   const [homestays, setHomestays] = useState([])
   const [reviews, setReviews] = useState({})
   const [bookings, setBookings] = useState([])
+  const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('properties')
   const [actionMsg, setActionMsg] = useState(null)
@@ -48,13 +49,15 @@ export default function OwnerDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [hRes, bRes] = await Promise.all([
+      const [hRes, bRes, aRes] = await Promise.all([
         fetchMyHomestays(),
         fetchOwnerBookings(),
+        fetchHostAnalytics(),
       ])
       const myHomestays = hRes.data || []
       setHomestays(myHomestays)
       setBookings(bRes.data || [])
+      setAnalytics(aRes.data || null)
 
       // Load reviews for all homestays
       const reviewMap = {}
@@ -289,6 +292,7 @@ export default function OwnerDashboard() {
             { id: 'properties', label: '🏡 My Properties' },
             { id: 'bookings', label: '📅 Bookings' },
             { id: 'reviews', label: '💬 Guest Reviews' },
+            { id: 'analytics', label: '📊 Analytics' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setActiveTab(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               {label}
@@ -522,6 +526,183 @@ export default function OwnerDashboard() {
                   <div className="flex flex-col items-center py-16">
                     <span className="text-4xl mb-3">📭</span>
                     <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No reviews for this property yet</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && analytics && (
+          <div className="space-y-6">
+            {/* AI Insights Card */}
+            <div className={`rounded-2xl border p-6 bg-gradient-to-br from-primary-500/10 via-transparent to-transparent ${
+              darkMode ? 'border-primary-900/50 bg-dark-800' : 'border-primary-100 bg-white'
+            }`}>
+              <div className="flex items-start gap-4">
+                <span className="text-3xl">🤖</span>
+                <div>
+                  <h3 className={`font-heading font-bold text-base mb-1.5 ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
+                    AI-Powered Property Insights
+                  </h3>
+                  <p className={`text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {analytics.aiSummary}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Total Earnings
+                </span>
+                <div className={`text-3xl font-heading font-black mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  ₹{analytics.totalRevenue?.toLocaleString()}
+                </div>
+                <p className={`text-xs mt-1.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Generated from confirmed guest stays
+                </p>
+              </div>
+
+              <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Average Order Value
+                </span>
+                <div className={`text-3xl font-heading font-black mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  ₹{analytics.totalBookings > 0 ? Math.round(analytics.totalRevenue / analytics.totalBookings).toLocaleString() : '0'}
+                </div>
+                <p className={`text-xs mt-1.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Average revenue generated per check-in
+                </p>
+              </div>
+
+              <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Host Reputation
+                </span>
+                <div className="flex items-center gap-3 mt-2">
+                  <span className={`text-3xl font-heading font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {analytics.averageRating}
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    {renderStars(Math.round(analytics.averageRating))}
+                    <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Based on {analytics.sentiment?.total || 0} review{analytics.sentiment?.total !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Earnings Bar Chart */}
+              <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <h3 className={`font-heading font-bold text-sm mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Revenue Over Time 📈
+                </h3>
+                
+                {analytics.monthlyRevenue?.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* SVG Chart */}
+                    <div className="h-48 flex items-end justify-around pt-6 pb-2 border-b border-gray-200 dark:border-gray-700">
+                      {analytics.monthlyRevenue.map((item, index) => {
+                        const maxVal = Math.max(...analytics.monthlyRevenue.map(m => m.revenue), 1)
+                        const pct = Math.round((item.revenue / maxVal) * 85) // Cap at 85% height for labels
+                        return (
+                          <div key={index} className="flex flex-col items-center flex-1 group relative">
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-10 px-2 py-1 bg-gray-900 text-white text-[10px] rounded shadow-lg whitespace-nowrap">
+                              ₹{item.revenue?.toLocaleString()}
+                            </div>
+                            {/* Bar */}
+                            <div 
+                              style={{ height: `${Math.max(pct, 6)}%` }}
+                              className="w-8 sm:w-12 bg-primary-500 hover:bg-primary-600 rounded-t-lg transition-all duration-300 shadow-lg shadow-primary-500/10 hover:shadow-primary-500/30 cursor-pointer"
+                            />
+                            {/* Label */}
+                            <span className={`text-[10px] mt-2 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {item.month}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-48 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl mb-2">📉</span>
+                    <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      No revenue data to display
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Review Sentiment Chart */}
+              <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <h3 className={`font-heading font-bold text-sm mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Guest Sentiment Breakdown 💬
+                </h3>
+
+                {analytics.sentiment?.total > 0 ? (
+                  <div className="space-y-5">
+                    {/* Positive */}
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1.5">
+                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😊 Positive Sentiment (4-5 ★)</span>
+                        <span className="text-green-500">
+                          {analytics.sentiment.positive} ({Math.round((analytics.sentiment.positive / analytics.sentiment.total) * 100)}%)
+                        </span>
+                      </div>
+                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
+                        <div 
+                          style={{ width: `${(analytics.sentiment.positive / analytics.sentiment.total) * 100}%` }}
+                          className="h-full bg-green-500 rounded-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Neutral */}
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1.5">
+                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😐 Neutral Sentiment (3 ★)</span>
+                        <span className="text-amber-500">
+                          {analytics.sentiment.neutral} ({Math.round((analytics.sentiment.neutral / analytics.sentiment.total) * 100)}%)
+                        </span>
+                      </div>
+                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
+                        <div 
+                          style={{ width: `${(analytics.sentiment.neutral / analytics.sentiment.total) * 100}%` }}
+                          className="h-full bg-amber-500 rounded-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Negative */}
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1.5">
+                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😟 Critical Sentiment (1-2 ★)</span>
+                        <span className="text-red-500">
+                          {analytics.sentiment.negative} ({Math.round((analytics.sentiment.negative / analytics.sentiment.total) * 100)}%)
+                        </span>
+                      </div>
+                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
+                        <div 
+                          style={{ width: `${(analytics.sentiment.negative / analytics.sentiment.total) * 100}%` }}
+                          className="h-full bg-red-500 rounded-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-48 flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl mb-2">📊</span>
+                    <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      No review sentiment data to display
+                    </span>
                   </div>
                 )}
               </div>

@@ -184,4 +184,9 @@ export const updateBookingStatus = async (id, status) => {
   return response.data;
 };
 
+export const fetchHostAnalytics = async () => {
+  const response = await api.get('/api/homestays/owner/analytics');
+  return response.data;
+};
+
 export default api;

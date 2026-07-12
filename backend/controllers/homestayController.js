@@ -9,7 +9,8 @@
 
 const Homestay = require('../models/Homestay');
 const Review = require('../models/Review');
-const { generateTouristChatResponse, generateEnhancedDescription } = require('../config/gemini');
+const Booking = require('../models/Booking');
+const { generateTouristChatResponse, generateEnhancedDescription, generateHostInsights } = require('../config/gemini');
 
 /**
  * GET /api/homestays
@@ -270,6 +271,93 @@ const enhanceHomestayDescription = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/homestays/owner/analytics
+ * Protected (Owner/Admin) — Retrieve property, bookings, and review sentiment analytics.
+ */
+const getHostAnalytics = async (req, res) => {
+  try {
+    const myHomestays = await Homestay.find({ owner: req.user._id });
+    const homestayIds = myHomestays.map((h) => h._id);
+
+    if (homestayIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalRevenue: 0,
+          totalBookings: 0,
+          averageRating: 0.0,
+          monthlyRevenue: [],
+          sentiment: { positive: 0, neutral: 0, negative: 0 },
+          aiSummary: 'No homestay listings created yet. Add properties to start seeing analytical insights!',
+        },
+      });
+    }
+
+    // 1. Gather all bookings on these homestays
+    const bookings = await Booking.find({ homestay: { $in: homestayIds } });
+    const confirmedBookings = bookings.filter((b) => b.status === 'confirmed');
+
+    const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.totalPrice, 0);
+    const totalBookings = bookings.length;
+
+    // Calculate monthly breakdown
+    const monthlyMap = {};
+    confirmedBookings.forEach((b) => {
+      const date = new Date(b.checkIn);
+      const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      monthlyMap[monthYear] = (monthlyMap[monthYear] || 0) + b.totalPrice;
+    });
+
+    const monthlyRevenue = Object.keys(monthlyMap).map((key) => ({
+      month: key,
+      revenue: monthlyMap[key],
+    }));
+
+    // 2. Gather reviews
+    const reviews = await Review.find({ homestay: { $in: homestayIds } });
+    
+    let avgRating = 0;
+    let positive = 0;
+    let neutral = 0;
+    let negative = 0;
+
+    if (reviews.length > 0) {
+      const sumRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+      avgRating = Number((sumRating / reviews.length).toFixed(1));
+
+      reviews.forEach((r) => {
+        if (r.rating >= 4) positive++;
+        else if (r.rating === 3) neutral++;
+        else negative++;
+      });
+    }
+
+    // Generate AI Summary insights
+    const aiSummary = await generateHostInsights(reviews);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalRevenue,
+        totalBookings,
+        averageRating: avgRating,
+        monthlyRevenue,
+        sentiment: {
+          positive,
+          neutral,
+          negative,
+          total: reviews.length,
+        },
+        aiSummary,
+      },
+    });
+  } catch (error) {
+    console.error('[getHostAnalytics] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve host analytics', error: error.message });
+  }
+};
+
 module.exports = { 
   getAllHomestays, 
   getMyHomestays, 
@@ -278,5 +366,6 @@ module.exports = {
   updateHomestay, 
   deleteHomestay, 
   chatWithLocalGuide,
-  enhanceHomestayDescription
+  enhanceHomestayDescription,
+  getHostAnalytics
 };

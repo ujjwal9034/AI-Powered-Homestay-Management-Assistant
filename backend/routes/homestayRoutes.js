@@ -16,6 +16,7 @@ const {
   deleteHomestay,
   chatWithLocalGuide,
   enhanceHomestayDescription,
+  getHostAnalytics,
 } = require('../controllers/homestayController');
 
 // Public routes
@@ -23,6 +24,9 @@ router.get('/', getAllHomestays);
 
 // Protected: Owner gets own homestays (must be before /:id)
 router.get('/mine', protect, authorize('owner', 'admin'), getMyHomestays);
+
+// Protected: Owner analytics dashboard (must be before /:id)
+router.get('/owner/analytics', protect, authorize('owner', 'admin'), getHostAnalytics);
 
 // Protected: Enhance description using Gemini AI (must be before /:id)
 router.post('/enhance', protect, authorize('owner', 'admin'), enhanceHomestayDescription);

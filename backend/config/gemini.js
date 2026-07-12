@@ -160,4 +160,44 @@ Strict guidelines:
   }
 };
 
-module.exports = { generateReviewReply, generateTouristChatResponse, generateEnhancedDescription };
+/**
+ * Generate a qualitative summary of guest reviews for a property owner.
+ *
+ * @param {Array} reviews - Array of review objects containing { text, rating }
+ * @returns {Promise<string>} Summary of positive highlights and areas of improvement
+ */
+const generateHostInsights = async (reviews) => {
+  if (!genAI) {
+    return 'Gemini AI key is not configured. Please add GEMINI_API_KEY to your .env file.';
+  }
+
+  if (!reviews || reviews.length === 0) {
+    return 'No guest reviews received yet. Host guest stays and collect reviews to display AI insights!';
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const reviewSnippets = reviews.map((r) => `- [${r.rating}/5 stars] "${r.text}"`).join('\n');
+
+    const prompt = `You are a professional business consultant for StayWise, a homestay property management platform.
+Analyze the following list of reviews submitted by guests for a host's properties.
+Generate a concise, insightful review summary (3-4 sentences, max 80 words) addressed to the host.
+
+Guest reviews:
+${reviewSnippets}
+
+Strict guidelines:
+1. Summarize the major strengths guests loved (e.g. hospitality, location, cleanliness).
+2. Constructively point out any suggestions or areas for improvement highlighted by critical feedback.
+3. Keep it warm, professional, encouraging, and highly concise.
+4. Answer with ONLY the summary paragraph. No greetings, introductions, or placeholder formatting.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error) {
+    console.error('[Gemini AI] Review analysis failed:', error.message);
+    return 'Could not generate AI review summary at this time.';
+  }
+};
+
+module.exports = { generateReviewReply, generateTouristChatResponse, generateEnhancedDescription, generateHostInsights };
