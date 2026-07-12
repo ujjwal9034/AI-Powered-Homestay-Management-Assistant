@@ -121,6 +121,11 @@ export const replyToReview = async (id, text) => {
   return response.data;
 };
 
+export const requestReviewSuggestion = async (id) => {
+  const response = await api.post(`/api/reviews/${id}/suggest`);
+  return response.data;
+};
+
 export const deleteReview = async (id) => {
   const response = await api.delete(`/api/reviews/${id}`);
   return response.data;

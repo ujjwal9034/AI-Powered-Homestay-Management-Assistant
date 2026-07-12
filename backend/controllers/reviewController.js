@@ -9,6 +9,7 @@
 
 const Review = require('../models/Review');
 const Homestay = require('../models/Homestay');
+const { generateReviewReply } = require('../config/gemini');
 
 /**
  * POST /api/reviews
@@ -37,11 +38,25 @@ const createReview = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You cannot review your own homestay' });
     }
 
+    // Generate AI suggestion in the background
+    let aiSuggestion = null;
+    try {
+      aiSuggestion = await generateReviewReply(
+        homestay.name,
+        req.user.name,
+        rating,
+        text
+      );
+    } catch (err) {
+      console.warn('[Gemini AI] Failed to pre-generate suggestion:', err.message);
+    }
+
     const review = await Review.create({
       customer: req.user._id,
       homestay: homestayId,
       rating,
       text,
+      aiSuggestion,
     });
 
     // Update homestay stats
@@ -297,6 +312,45 @@ const getAllReviews = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/reviews/:id/suggest
+ * Generate a fresh AI reply suggestion for a review.
+ */
+const generateOnDemandSuggestion = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id)
+      .populate('customer', 'name')
+      .populate('homestay', 'name owner');
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    // Only owner of the homestay or admin can request suggestion
+    if (review.homestay.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to suggest replies for this review' });
+    }
+
+    const aiSuggestion = await generateReviewReply(
+      review.homestay.name,
+      review.customer?.name || 'Guest',
+      review.rating,
+      review.text
+    );
+
+    review.aiSuggestion = aiSuggestion;
+    await review.save();
+
+    res.status(200).json({
+      success: true,
+      data: aiSuggestion,
+    });
+  } catch (error) {
+    console.error('[generateOnDemandSuggestion] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to generate AI suggestion', error: error.message });
+  }
+};
+
 module.exports = {
   createReview,
   getMyReviews,
@@ -305,4 +359,5 @@ module.exports = {
   deleteReview,
   updateReview,
   getAllReviews,
+  generateOnDemandSuggestion,
 };

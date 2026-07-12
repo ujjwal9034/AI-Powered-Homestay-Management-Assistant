@@ -15,6 +15,7 @@ const {
   deleteReview,
   updateReview,
   getAllReviews,
+  generateOnDemandSuggestion,
 } = require('../controllers/reviewController');
 
 // Admin: get all reviews across platform
@@ -31,6 +32,9 @@ router.post('/', protect, authorize('customer'), createReview);
 
 // Owner: reply to a review
 router.patch('/:id/reply', protect, authorize('owner', 'admin'), replyToReview);
+
+// Owner: generate fresh AI reply suggestion
+router.post('/:id/suggest', protect, authorize('owner', 'admin'), generateOnDemandSuggestion);
 
 // Customer/Admin: update a review
 router.put('/:id', protect, authorize('customer', 'admin'), updateReview);

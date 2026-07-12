@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion } from '../services/api'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -31,6 +31,7 @@ export default function OwnerDashboard() {
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [replyLoading, setReplyLoading] = useState(false)
+  const [suggestingReviews, setSuggestingReviews] = useState({})
 
   // Selected homestay for reviews
   const [selectedHomestay, setSelectedHomestay] = useState(null)
@@ -138,6 +139,26 @@ export default function OwnerDashboard() {
       showAction('Failed to send reply', true)
     } finally {
       setReplyLoading(false)
+    }
+  }
+
+  const handleGenerateSuggestion = async (reviewId) => {
+    setSuggestingReviews((prev) => ({ ...prev, [reviewId]: true }))
+    try {
+      const res = await requestReviewSuggestion(reviewId)
+      // Update local state with the new suggestion
+      setReviews((prev) => {
+        const updated = { ...prev }
+        updated[selectedHomestay] = updated[selectedHomestay].map((r) =>
+          r._id === reviewId ? { ...r, aiSuggestion: res.data } : r
+        )
+        return updated
+      })
+      showAction('AI Suggested Reply generated')
+    } catch {
+      showAction('Failed to generate suggestion', true)
+    } finally {
+      setSuggestingReviews((prev) => ({ ...prev, [reviewId]: false }))
     }
   }
 
@@ -299,12 +320,45 @@ export default function OwnerDashboard() {
                         {renderStars(review.rating)}
                         <p className={`text-sm leading-relaxed mt-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.text}</p>
 
-                        {/* AI Suggestion */}
-                        {review.aiSuggestion && !review.ownerReply?.text && (
-                          <div className={`mt-3 rounded-xl border p-4 ${darkMode ? 'bg-primary-900/20 border-primary-800' : 'bg-primary-50/50 border-primary-100'}`}>
-                            <span className={`text-xs font-semibold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>🤖 AI Suggested Reply:</span>
-                            <p className={`text-sm mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{review.aiSuggestion}</p>
-                            <button onClick={() => { setReplyingTo(review._id); setReplyText(review.aiSuggestion) }} className="mt-2 text-xs text-primary-500 hover:text-primary-600 font-medium cursor-pointer">Use this reply →</button>
+                        {/* AI Suggestion Section */}
+                        {!review.ownerReply?.text && (
+                          <div className="mt-3">
+                            {review.aiSuggestion ? (
+                              <div className={`rounded-xl border p-4 ${darkMode ? 'bg-primary-900/20 border-primary-800' : 'bg-primary-50/50 border-primary-100'}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs font-semibold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>🤖 AI Suggested Reply:</span>
+                                  <button 
+                                    onClick={() => handleGenerateSuggestion(review._id)} 
+                                    disabled={suggestingReviews[review._id]}
+                                    className={`text-[10px] font-medium transition-colors cursor-pointer ${suggestingReviews[review._id] ? 'opacity-50' : 'text-primary-500 hover:text-primary-600'}`}
+                                  >
+                                    {suggestingReviews[review._id] ? 'Regenerating...' : '🔄 Regenerate'}
+                                  </button>
+                                </div>
+                                <p className={`text-sm mt-1 leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{review.aiSuggestion}</p>
+                                <button onClick={() => { setReplyingTo(review._id); setReplyText(review.aiSuggestion) }} className="mt-2 text-xs text-primary-500 hover:text-primary-600 font-medium cursor-pointer">Use this reply →</button>
+                              </div>
+                            ) : (
+                              <div>
+                                {suggestingReviews[review._id] ? (
+                                  <div className="flex items-center gap-2 text-xs text-primary-500">
+                                    <div className="w-3.5 h-3.5 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+                                    <span>Generating suggestion with Gemini AI...</span>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleGenerateSuggestion(review._id)}
+                                    className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${
+                                      darkMode
+                                        ? 'border-primary-800 text-primary-400 hover:bg-primary-950/20'
+                                        : 'border-primary-100 text-primary-600 hover:bg-primary-50'
+                                    }`}
+                                  >
+                                    🤖 Generate AI Suggestion
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
 
