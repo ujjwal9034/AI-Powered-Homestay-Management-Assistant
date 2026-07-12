@@ -9,7 +9,7 @@
 
 const Homestay = require('../models/Homestay');
 const Review = require('../models/Review');
-const { generateTouristChatResponse } = require('../config/gemini');
+const { generateTouristChatResponse, generateEnhancedDescription } = require('../config/gemini');
 
 /**
  * GET /api/homestays
@@ -241,6 +241,35 @@ const chatWithLocalGuide = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/homestays/enhance
+ * Protected (Owner/Admin) — Enhance homestay description using Gemini AI.
+ */
+const enhanceHomestayDescription = async (req, res) => {
+  try {
+    const { name, location, amenities, keywords } = req.body;
+
+    if (!name || !location) {
+      return res.status(400).json({ success: false, message: 'Name and location are required for AI description generation' });
+    }
+
+    const description = await generateEnhancedDescription(
+      name,
+      location,
+      amenities || [],
+      keywords || ''
+    );
+
+    res.status(200).json({
+      success: true,
+      description,
+    });
+  } catch (error) {
+    console.error('[enhanceHomestayDescription] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to enhance description with AI', error: error.message });
+  }
+};
+
 module.exports = { 
   getAllHomestays, 
   getMyHomestays, 
@@ -248,5 +277,6 @@ module.exports = {
   createHomestay, 
   updateHomestay, 
   deleteHomestay, 
-  chatWithLocalGuide 
+  chatWithLocalGuide,
+  enhanceHomestayDescription
 };

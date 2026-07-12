@@ -158,4 +158,9 @@ export const chatWithLocalGuide = async (id, message, history) => {
   return response.data;
 };
 
+export const enhanceHomestayDescription = async (data) => {
+  const response = await api.post('/api/homestays/enhance', data);
+  return response.data;
+};
+
 export default api;

@@ -119,4 +119,45 @@ Strict guidelines:
   }
 };
 
-module.exports = { generateReviewReply, generateTouristChatResponse };
+/**
+ * Generate a professional, highly attractive property description for a homestay listing.
+ *
+ * @param {string} name - Homestay name
+ * @param {string} location - Homestay location
+ * @param {Array} amenities - Array of amenities
+ * @param {string} keywords - Key terms / vibes (e.g. cozy, rustic, fireplace)
+ * @returns {Promise<string>} Generated description paragraph
+ */
+const generateEnhancedDescription = async (name, location, amenities, keywords) => {
+  if (!genAI) {
+    return 'Gemini AI key is not configured. Please add GEMINI_API_KEY to your backend .env file.';
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `You are a professional copywriting assistant for StayWise, a premium homestay management assistant.
+Generate an engaging, warm, and highly appealing property description paragraph for a homestay listing.
+
+Property Details:
+- Name: ${name}
+- Location: ${location}
+- Amenities: ${(amenities || []).join(', ') || 'Standard local amenities'}
+- Additional Vibe / Key Words: ${keywords || 'none specified'}
+
+Strict guidelines:
+1. Write a compelling description paragraph (around 4-5 sentences, max 100-120 words).
+2. Highlight the location, guest comfort, unique highlights (like views or specific amenities), and host warmth.
+3. Make it sound premium, inviting, and professional.
+4. Do NOT include any placeholder text (e.g., "[Host Name]", "[Your Name]").
+5. Return ONLY the description paragraph. No introductory or closing remarks, no markdown headings, no lists.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error) {
+    console.error('[Gemini AI] Description enhancement failed:', error.message);
+    return 'Could not generate AI description at this time.';
+  }
+};
+
+module.exports = { generateReviewReply, generateTouristChatResponse, generateEnhancedDescription };

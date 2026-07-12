@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription } from '../services/api'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -20,6 +20,10 @@ export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('properties')
   const [actionMsg, setActionMsg] = useState(null)
+
+  // AI Description states
+  const [aiKeywords, setAiKeywords] = useState('')
+  const [enhancingDescription, setEnhancingDescription] = useState(false)
 
   // Add/edit homestay modal
   const [showModal, setShowModal] = useState(false)
@@ -74,6 +78,7 @@ export default function OwnerDashboard() {
   const openAddModal = () => {
     setEditingHomestay(null)
     setForm({ name: '', location: '', description: '', amenities: '', pricePerNight: '', image: '' })
+    setAiKeywords('')
     setShowModal(true)
   }
 
@@ -87,6 +92,7 @@ export default function OwnerDashboard() {
       pricePerNight: h.pricePerNight || '',
       image: h.image || '',
     })
+    setAiKeywords('')
     setShowModal(true)
   }
 
@@ -159,6 +165,29 @@ export default function OwnerDashboard() {
       showAction('Failed to generate suggestion', true)
     } finally {
       setSuggestingReviews((prev) => ({ ...prev, [reviewId]: false }))
+    }
+  }
+
+  const handleEnhanceDescription = async () => {
+    if (!form.name || !form.location) {
+      showAction('Please fill in Name and Location first to generate a description', true)
+      return
+    }
+    setEnhancingDescription(true)
+    try {
+      const data = {
+        name: form.name,
+        location: form.location,
+        amenities: form.amenities ? form.amenities.split(',').map((a) => a.trim()).filter(Boolean) : [],
+        keywords: aiKeywords,
+      }
+      const res = await enhanceHomestayDescription(data)
+      setForm((prev) => ({ ...prev, description: res.description }))
+      showAction('AI Description generated!')
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to generate description', true)
+    } finally {
+      setEnhancingDescription(false)
     }
   }
 
@@ -426,9 +455,38 @@ export default function OwnerDashboard() {
                 <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Location *</label>
                 <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Manali, Himachal Pradesh" required className={inputClass} />
               </div>
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-primary-950/10 border-primary-900/50' : 'bg-primary-50/20 border-primary-100/50'}`}>
+                <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
+                  🤖 Write Description with Gemini AI
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiKeywords}
+                    onChange={(e) => setAiKeywords(e.target.value)}
+                    placeholder="e.g., cozy, mountain views, fireplace, rustic"
+                    className={`flex-1 rounded-lg border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
+                      darkMode
+                        ? 'bg-dark-900 border-gray-750 text-gray-200 focus:ring-primary-500/30'
+                        : 'bg-white border-gray-200 text-gray-800 focus:ring-primary-500/20'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleEnhanceDescription}
+                    disabled={enhancingDescription}
+                    className="px-3 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                  >
+                    {enhancingDescription ? 'Generating...' : '✨ Generate'}
+                  </button>
+                </div>
+                <p className={`text-[10px] mt-1.5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Fills the description below based on property details & keywords.
+                </p>
+              </div>
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your homestay..." rows={3} className={inputClass} />
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your homestay..." rows={4} className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
