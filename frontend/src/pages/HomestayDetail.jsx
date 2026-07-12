@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide } from '../services/api'
 
 export default function HomestayDetail() {
   const { id } = useParams()
@@ -20,6 +20,16 @@ export default function HomestayDetail() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Sidebar Tab control: 'review' or 'chat'
+  const [sidebarTab, setSidebarTab] = useState('chat') // default to chat for AI-powered assistant focus!
+
+  // Chat states
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'model', text: 'Hello! I am your StayWise AI Concierge. 🤖 Ask me anything about this property (amenities, location, pricing) or request local sights, trekking spots, and dining recommendations in the area!' }
+  ])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
 
   // Review form state
   const [rating, setRating] = useState(5)
@@ -80,6 +90,29 @@ export default function HomestayDetail() {
       loadHomestay()
     } catch {
       showAction('Failed to delete review', true)
+    }
+  }
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    if (!chatInput.trim() || chatLoading) return
+
+    const userMsg = { role: 'user', text: chatInput.trim() }
+    setChatMessages((prev) => [...prev, userMsg])
+    setChatInput('')
+    setChatLoading(true)
+
+    try {
+      const history = chatMessages.slice(1) // Exclude welcome message to keep prompt cleaner
+      const res = await chatWithLocalGuide(id, userMsg.text, history)
+      setChatMessages((prev) => [...prev, { role: 'model', text: res.response }])
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'model', text: 'Sorry, I am having trouble connecting to my local guide services right now.' }
+      ])
+    } finally {
+      setChatLoading(false)
     }
   }
 
@@ -270,61 +303,149 @@ export default function HomestayDetail() {
             </div>
           </div>
 
-          {/* Review write box */}
+          {/* Sidebar Area */}
           <div>
-            <div className={`rounded-2xl border p-6 sticky top-24 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
-              {isCustomer ? (
-                <>
-                  <h3 className={`font-heading font-bold text-lg mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Share Your Experience
+            <div className={`rounded-2xl border p-5 sticky top-24 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              
+              {/* Tab Selector */}
+              <div className={`flex gap-1 p-1 rounded-xl mb-5 ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
+                <button
+                  onClick={() => setSidebarTab('chat')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
+                    sidebarTab === 'chat'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  🤖 AI Guide
+                </button>
+                <button
+                  onClick={() => setSidebarTab('review')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
+                    sidebarTab === 'review'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📝 Review
+                </button>
+              </div>
+
+              {/* Chat tab */}
+              {sidebarTab === 'chat' && (
+                <div className="flex flex-col h-[380px]">
+                  <h3 className={`font-heading font-bold text-sm mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    StayWise AI Concierge
                   </h3>
-                  <form onSubmit={handleSubmitReview} className="space-y-4">
-                    <div>
-                      <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Your Rating
-                      </label>
-                      {renderStars(0, 'w-6 h-6', true, rating, setRating)}
-                    </div>
-                    <div>
-                      <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Your Review
-                      </label>
-                      <textarea
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder="What did you like or dislike about your stay?"
-                        rows={4}
-                        required
-                        className={inputClass}
-                      />
-                    </div>
+                  
+                  {/* Chat messages stream */}
+                  <div className={`flex-1 overflow-y-auto space-y-3 pr-1 mb-3 text-xs scrollbar-none ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {chatMessages.map((msg, i) => {
+                      const isAI = msg.role === 'model'
+                      return (
+                        <div key={i} className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
+                          <div className={`max-w-[85%] rounded-2xl px-3 py-2.5 leading-relaxed ${
+                            isAI 
+                              ? darkMode ? 'bg-dark-900 text-gray-200 rounded-tl-none border border-gray-750' : 'bg-gray-100 text-gray-800 rounded-tl-none border border-gray-200'
+                              : 'bg-primary-500 text-white rounded-tr-none shadow-sm shadow-primary-500/10'
+                          }`}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {chatLoading && (
+                      <div className="flex justify-start items-center gap-1.5 text-primary-500 animate-pulse">
+                        <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Concierge is writing...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Chat input form */}
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask about transit, dining, spots..."
+                      disabled={chatLoading}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-xs placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                        darkMode 
+                          ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30' 
+                          : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                      }`}
+                    />
                     <button
                       type="submit"
-                      disabled={formLoading}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                      disabled={chatLoading || !chatInput.trim()}
+                      className="px-3 rounded-xl bg-primary-500 text-white hover:bg-primary-600 font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      {formLoading ? 'Submitting...' : 'Submit Review'}
+                      ✈️
                     </button>
                   </form>
-                </>
-              ) : (
-                <div className="text-center py-6">
-                  <span className="text-3xl block mb-3">📝</span>
-                  <h4 className={`font-heading font-semibold text-sm mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {isAuthenticated ? 'Owner Accounts Cannot Review' : 'Want to leave a review?'}
-                  </h4>
-                  <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {isAuthenticated
-                      ? 'Only customer accounts can submit reviews for properties.'
-                      : 'Please sign in with a Guest account to share your feedback.'}
-                  </p>
-                  {!isAuthenticated && (
-                    <Link
-                      to="/login"
-                      className="inline-block px-5 py-2 rounded-xl bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors"
-                    >
-                      Sign In
-                    </Link>
+                </div>
+              )}
+
+              {/* Review tab */}
+              {sidebarTab === 'review' && (
+                <div>
+                  {isCustomer ? (
+                    <>
+                      <h3 className={`font-heading font-bold text-sm mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Share Your Experience
+                      </h3>
+                      <form onSubmit={handleSubmitReview} className="space-y-4">
+                        <div>
+                          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Your Rating
+                          </label>
+                          {renderStars(0, 'w-6 h-6', true, rating, setRating)}
+                        </div>
+                        <div>
+                          <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Your Review
+                          </label>
+                          <textarea
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="What did you like or dislike about your stay?"
+                            rows={4}
+                            required
+                            className={inputClass}
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={formLoading}
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                        >
+                          {formLoading ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <span className="text-3xl block mb-3">📝</span>
+                      <h4 className={`font-heading font-semibold text-sm mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {isAuthenticated ? 'Owner Accounts Cannot Review' : 'Want to leave a review?'}
+                      </h4>
+                      <p className={`text-xs mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {isAuthenticated
+                          ? 'Only customer accounts can submit reviews for properties.'
+                          : 'Please sign in with a Guest account to share your feedback.'}
+                      </p>
+                      {!isAuthenticated && (
+                        <Link
+                          to="/login"
+                          className="inline-block px-5 py-2 rounded-xl bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors"
+                        >
+                          Sign In
+                        </Link>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

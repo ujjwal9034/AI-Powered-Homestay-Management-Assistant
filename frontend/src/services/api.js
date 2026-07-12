@@ -153,4 +153,9 @@ export const deleteUser = async (id) => {
   return response.data;
 };
 
+export const chatWithLocalGuide = async (id, message, history) => {
+  const response = await api.post(`/api/homestays/${id}/chat`, { message, history });
+  return response.data;
+};
+
 export default api;

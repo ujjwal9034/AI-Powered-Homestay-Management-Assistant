@@ -9,6 +9,7 @@
 
 const Homestay = require('../models/Homestay');
 const Review = require('../models/Review');
+const { generateTouristChatResponse } = require('../config/gemini');
 
 /**
  * GET /api/homestays
@@ -196,4 +197,56 @@ const deleteHomestay = async (req, res) => {
   }
 };
 
-module.exports = { getAllHomestays, getMyHomestays, getHomestayById, createHomestay, updateHomestay, deleteHomestay };
+/**
+ * POST /api/homestays/:id/chat
+ * Public/Protected — Interactive chat session with Gemini AI assistant as a local guide.
+ */
+const chatWithLocalGuide = async (req, res) => {
+  try {
+    const { message, history } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
+    }
+
+    const homestay = await Homestay.findById(req.params.id)
+      .populate('owner', 'name');
+
+    if (!homestay) {
+      return res.status(404).json({ success: false, message: 'Homestay not found' });
+    }
+
+    // Fetch reviews for context
+    const reviews = await Review.find({ homestay: homestay._id })
+      .populate('customer', 'name')
+      .limit(5);
+
+    const homestayWithReviews = {
+      ...homestay.toObject(),
+      reviews,
+    };
+
+    const reply = await generateTouristChatResponse(homestayWithReviews, history || [], message.trim());
+
+    res.status(200).json({
+      success: true,
+      response: reply,
+    });
+  } catch (error) {
+    if (error.kind === 'ObjectId') {
+      return res.status(400).json({ success: false, message: 'Invalid homestay ID format' });
+    }
+    console.error('[chatWithLocalGuide] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to communicate with AI guide', error: error.message });
+  }
+};
+
+module.exports = { 
+  getAllHomestays, 
+  getMyHomestays, 
+  getHomestayById, 
+  createHomestay, 
+  updateHomestay, 
+  deleteHomestay, 
+  chatWithLocalGuide 
+};

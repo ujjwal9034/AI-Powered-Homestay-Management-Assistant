@@ -14,6 +14,7 @@ const {
   createHomestay,
   updateHomestay,
   deleteHomestay,
+  chatWithLocalGuide,
 } = require('../controllers/homestayController');
 
 // Public routes
@@ -24,6 +25,9 @@ router.get('/mine', protect, authorize('owner', 'admin'), getMyHomestays);
 
 // Public: single homestay with reviews
 router.get('/:id', getHomestayById);
+
+// Public: Chat with homestay AI assistant local guide
+router.post('/:id/chat', chatWithLocalGuide);
 
 // Protected: Owner creates homestay
 router.post('/', protect, authorize('owner', 'admin'), createHomestay);
