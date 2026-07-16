@@ -1,8 +1,0 @@
-workspace:
-  id: c720f10c-f889-47d8-8b36-e3450327dac6
-
-# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
-
-cloudResources:
-  collections:
-    ../postman/collections/Week6 Auth API: 56193046-99c6043d-5405-4dbf-9de0-1a98adca3f0c
