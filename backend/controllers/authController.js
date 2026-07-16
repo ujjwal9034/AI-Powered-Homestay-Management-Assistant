@@ -165,6 +165,7 @@ const getMe = async (req, res) => {
         avatar: user.avatar,
         phone: user.phone,
         googleId: user.googleId ? true : false,
+        wishlist: user.wishlist || [],
         createdAt: user.createdAt,
       },
     });
@@ -197,4 +198,114 @@ const googleCallback = (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, googleCallback };
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const { name, phone, avatar, password } = req.body;
+
+    if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    if (password) {
+      if (user.googleId) {
+        return res.status(400).json({ success: false, message: 'Google OAuth accounts cannot set a password.' });
+      }
+      user.password = password;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
+        googleId: user.googleId ? true : false,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('[updateProfile] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * GET /api/auth/wishlist
+ * Get current user's wishlist.
+ */
+const getWishlist = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: 'wishlist',
+      select: 'name location image pricePerNight rating totalReviews amenities'
+    });
+    res.status(200).json({
+      success: true,
+      data: user.wishlist || [],
+    });
+  } catch (error) {
+    console.error('[getWishlist] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch wishlist', error: error.message });
+  }
+};
+
+/**
+ * POST /api/auth/wishlist/:homestayId
+ * Toggle homestay in user's wishlist.
+ */
+const toggleWishlist = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const homestayId = req.params.homestayId;
+
+    if (!user.wishlist) {
+      user.wishlist = [];
+    }
+
+    const index = user.wishlist.indexOf(homestayId);
+    let message = '';
+    let isWishlisted = false;
+
+    if (index === -1) {
+      user.wishlist.push(homestayId);
+      message = 'Added to wishlist';
+      isWishlisted = true;
+    } else {
+      user.wishlist.splice(index, 1);
+      message = 'Removed from wishlist';
+      isWishlisted = false;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message,
+      isWishlisted,
+      wishlist: user.wishlist,
+    });
+  } catch (error) {
+    console.error('[toggleWishlist] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to toggle wishlist', error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist };
+
+

@@ -10,6 +10,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 const connectDB = require('./config/db');
 const { initializePassport } = require('./config/passport');
 const path = require('path');
@@ -22,6 +24,7 @@ const homestayRoutes = require('./routes/homestayRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -29,7 +32,36 @@ const PORT = process.env.PORT || 5001;
 // ─── Core Middleware ────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use(mongoSanitize()); // Sanitize user input to prevent NoSQL injection
 app.use(requestLogger);
+
+// ─── Rate Limiting ──────────────────────────────────────────────────────────────
+// General API rate limit: 100 requests per 15 minutes
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
+
+// Stricter rate limit for auth routes: 20 requests per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
+});
+
+// AI routes rate limit: 30 requests per 15 minutes (Gemini API is expensive)
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'AI rate limit reached. Please wait before making more AI requests.' },
+});
 
 // Serve static uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -39,13 +71,14 @@ initializePassport();
 app.use(passport.initialize());
 
 // ─── API Routes ─────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/homestays', homestayRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/bookings', bookingRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/reviews', generalLimiter, reviewRoutes);
+app.use('/api/homestays', generalLimiter, homestayRoutes);
+app.use('/api/admin', generalLimiter, adminRoutes);
+app.use('/api/bookings', generalLimiter, bookingRoutes);
 app.use('/api/health', healthRoutes);
-app.use('/api/upload', uploadRoutes);
+app.use('/api/upload', generalLimiter, uploadRoutes);
+app.use('/api/ai', aiLimiter, aiRoutes);
 
 // ─── Root Route ─────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {

@@ -8,7 +8,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
-const { register, login, logout, getMe, googleCallback } = require('../controllers/authController');
+const { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { registerValidation, loginValidation, validate } = require('../middleware/validators');
@@ -20,6 +20,9 @@ router.post('/login', authLimiter, loginValidation, validate, login);
 // ─── Protected routes (requires JWT) ────────────────────────────────────────────
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
+router.put('/profile', protect, updateProfile);
+router.get('/wishlist', protect, getWishlist);
+router.post('/wishlist/:homestayId', protect, toggleWishlist);
 
 // ─── Google OAuth routes ────────────────────────────────────────────────────────
 // Only register routes if Google OAuth is configured

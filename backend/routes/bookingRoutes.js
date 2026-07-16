@@ -13,6 +13,7 @@ const {
   getOwnerBookings,
   updateBookingStatus,
   draftBookingMessage,
+  cancelMyBooking,
 } = require('../controllers/bookingController');
 
 // Require authentication for all bookings
@@ -21,6 +22,7 @@ router.use(protect);
 // Guest endpoints
 router.post('/', authorize('customer'), createBooking);
 router.get('/mine', authorize('customer'), getMyBookings);
+router.patch('/:id/cancel', authorize('customer'), cancelMyBooking);
 
 // Owner endpoints
 router.get('/owner', authorize('owner', 'admin'), getOwnerBookings);

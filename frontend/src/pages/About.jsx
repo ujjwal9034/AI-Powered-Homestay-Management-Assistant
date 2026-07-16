@@ -33,7 +33,7 @@ const values = [
 ]
 
 const team = [
-  { name: 'Ujjwal Singh', role: 'Founder & Full-Stack Developer', emoji: '👨‍💻' },
+  { name: 'Ujjwal Pratap Singh', role: 'Founder & Full-Stack Developer', emoji: '👨‍💻' },
   { name: 'AI Assistant', role: 'AI Engineering & NLP', emoji: '🤖' },
   { name: 'Community', role: 'Beta Testers & Feedback', emoji: '🏘️' },
 ]

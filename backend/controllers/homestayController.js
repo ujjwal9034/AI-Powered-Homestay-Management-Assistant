@@ -384,8 +384,10 @@ const suggestHomestayPrice = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      suggestedPrice: result.suggestedPrice,
-      rationale: result.rationale
+      recommendation: {
+        recommendedPrice: result.suggestedPrice,
+        justification: result.rationale
+      }
     });
   } catch (error) {
     console.error('[suggestHomestayPrice] Error:', error.message);

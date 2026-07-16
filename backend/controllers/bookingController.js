@@ -205,10 +205,46 @@ const draftBookingMessage = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/bookings/:id/cancel
+ * Guest only — Cancel own booking.
+ */
+const cancelMyBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to cancel this booking' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      data: booking,
+    });
+  } catch (error) {
+    console.error('[cancelMyBooking] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking', error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getMyBookings,
   getOwnerBookings,
   updateBookingStatus,
   draftBookingMessage,
+  cancelMyBooking,
 };
+

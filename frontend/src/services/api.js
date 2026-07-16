@@ -52,9 +52,24 @@ export const getMe = async () => {
   return response.data;
 };
 
+export const updateProfile = async (profileData) => {
+  const response = await api.put('/api/auth/profile', profileData);
+  return response.data;
+};
+
 export const getGoogleAuthUrl = () => {
   const baseUrl = API_BASE_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
   return `${baseUrl}/api/auth/google`;
+};
+
+export const fetchWishlist = async () => {
+  const response = await api.get('/api/auth/wishlist');
+  return response.data;
+};
+
+export const toggleWishlist = async (homestayId) => {
+  const response = await api.post(`/api/auth/wishlist/${homestayId}`);
+  return response.data;
 };
 
 // ─── Homestay API ───────────────────────────────────────────────────────────────
@@ -184,6 +199,11 @@ export const updateBookingStatus = async (id, status) => {
   return response.data;
 };
 
+export const cancelBooking = async (id) => {
+  const response = await api.patch(`/api/bookings/${id}/cancel`);
+  return response.data;
+};
+
 export const fetchHostAnalytics = async () => {
   const response = await api.get('/api/homestays/owner/analytics');
   return response.data;
@@ -191,12 +211,12 @@ export const fetchHostAnalytics = async () => {
 
 // ─── AI Host Suite ───────────────────────────────────────────
 export const suggestHomestayPrice = async (homestayId, context) => {
-  const response = await api.post(`/api/homestays/${homestayId}/suggest-price`, context);
+  const response = await api.post(`/api/homestays/${homestayId}/suggest-price`, context, { timeout: 30000 });
   return response.data;
 };
 
 export const draftBookingMessage = async (bookingId, type) => {
-  const response = await api.post(`/api/bookings/${bookingId}/draft-message`, { type });
+  const response = await api.post(`/api/bookings/${bookingId}/draft-message`, { type }, { timeout: 30000 });
   return response.data;
 };
 
@@ -214,6 +234,12 @@ export const resolveImageUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   return `${apiBase}${url}`;
+};
+
+// ─── AI Trip Planner ────────────────────────────────────────────────────────────
+export const generateTripPlan = async (data) => {
+  const response = await api.post('/api/ai/trip-planner', data, { timeout: 60000 });
+  return response.data;
 };
 
 export default api;

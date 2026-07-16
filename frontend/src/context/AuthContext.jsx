@@ -144,12 +144,23 @@ export function AuthProvider({ children }) {
   }
 
   /**
+   * Update user details in context & localStorage
+   */
+  const updateUser = (updatedUser) => {
+    setUser((prev) => {
+      const merged = { ...prev, ...updatedUser }
+      localStorage.setItem('staywise-user', JSON.stringify(merged))
+      return merged
+    })
+  }
+
+  /**
    * Check if user is currently authenticated
    */
   const isAuthenticated = !!user?.token
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, register, logout, loginWithToken }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, register, logout, loginWithToken, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

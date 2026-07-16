@@ -19,6 +19,7 @@ export default function OwnerDashboard() {
   const [reviews, setReviews] = useState({})
   const [bookings, setBookings] = useState([])
   const [analytics, setAnalytics] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('properties')
   const [actionMsg, setActionMsg] = useState(null)
@@ -64,32 +65,59 @@ export default function OwnerDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [hRes, bRes, aRes] = await Promise.all([
+      // Parallelize properties and bookings (fast queries)
+      const [hRes, bRes] = await Promise.all([
         fetchMyHomestays(),
         fetchOwnerBookings(),
-        fetchHostAnalytics(),
       ])
       const myHomestays = hRes.data || []
       setHomestays(myHomestays)
       setBookings(bRes.data || [])
-      setAnalytics(aRes.data || null)
 
-      // Load reviews for all homestays
-      const reviewMap = {}
-      for (const h of myHomestays) {
-        try {
-          const rRes = await fetchHomestayReviews(h._id)
-          reviewMap[h._id] = rRes.data || []
-        } catch {
-          reviewMap[h._id] = []
-        }
+      // Parallelize reviews fetching for all homestays (very fast)
+      if (myHomestays.length > 0) {
+        const reviewPromises = myHomestays.map(async (h) => {
+          try {
+            const rRes = await fetchHomestayReviews(h._id)
+            return { id: h._id, data: rRes.data || [] }
+          } catch {
+            return { id: h._id, data: [] }
+          }
+        })
+        const results = await Promise.all(reviewPromises)
+        const reviewMap = {}
+        results.forEach((r) => {
+          reviewMap[r.id] = r.data
+        })
+        setReviews(reviewMap)
+        setSelectedHomestay(myHomestays[0]._id)
+      } else {
+        setReviews({})
       }
-      setReviews(reviewMap)
-      if (myHomestays.length > 0) setSelectedHomestay(myHomestays[0]._id)
     } catch (err) {
       console.warn('Failed to load:', err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAnalytics = async () => {
+    if (analyticsLoading) return
+    try {
+      setAnalyticsLoading(true)
+      const res = await fetchHostAnalytics()
+      setAnalytics(res.data || null)
+    } catch (err) {
+      console.warn('Failed to load analytics:', err.message)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
+    if (tabId === 'analytics' && !analytics) {
+      loadAnalytics()
     }
   }
 
@@ -260,7 +288,7 @@ export default function OwnerDashboard() {
         name: priceAdvisorHomestay.name,
         location: priceAdvisorHomestay.location,
         description: priceAdvisorHomestay.description,
-        amenities: priceAdvisorHomestay.amenities.join(', '),
+        amenities: priceAdvisorHomestay.amenities,
         pricePerNight: targetPrice,
         image: priceAdvisorHomestay.image
       })
@@ -389,7 +417,7 @@ export default function OwnerDashboard() {
             { id: 'reviews', label: '💬 Guest Reviews' },
             { id: 'analytics', label: '📊 Analytics' },
           ].map(({ id, label }) => (
-            <button key={id} onClick={() => setActiveTab(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+            <button key={id} onClick={() => handleTabChange(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               {label}
             </button>
           ))}
@@ -646,7 +674,13 @@ export default function OwnerDashboard() {
           </div>
         )}
         {/* Analytics Tab */}
-        {activeTab === 'analytics' && analytics && (
+        {activeTab === 'analytics' && (
+          analyticsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-500 rounded-full animate-spin" style={{ borderWidth: '3px' }} />
+              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Generating AI Market Insights & Analytics...</span>
+            </div>
+          ) : analytics ? (
           <div className="space-y-6">
             {/* AI Insights Card */}
             <div className={`rounded-2xl border p-6 bg-gradient-to-br from-primary-500/10 via-transparent to-transparent ${
@@ -821,6 +855,15 @@ export default function OwnerDashboard() {
               </div>
             </div>
           </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+              <span className="text-4xl">📈</span>
+              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Click below to generate AI-powered analytics</span>
+              <button onClick={loadAnalytics} className="px-5 py-2.5 rounded-xl bg-primary-500 text-white text-sm font-semibold cursor-pointer hover:bg-primary-600 transition-colors shadow-md">
+                Generate Analytics
+              </button>
+            </div>
+          )
         )}
       </div>
 

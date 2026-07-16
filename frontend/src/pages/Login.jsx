@@ -120,7 +120,7 @@ export default function Login() {
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ujjwal Singh"
+                    placeholder="Ujjwal Pratap Singh"
                     className={inputClass}
                   />
                 </div>

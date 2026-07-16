@@ -7,34 +7,67 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 let genAI = null;
 const MODEL_NAME = 'gemini-flash-latest';
+const FALLBACK_MODEL = 'gemini-2.0-flash';
 
 // Initialize genAI client if API key exists
 if (process.env.GEMINI_API_KEY) {
   genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  console.log('✅ Gemini AI service initialized');
+  console.log('✅ Gemini AI service initialized (model:', MODEL_NAME, ')');
 } else {
   console.log('⚠️ Gemini AI service not configured: GEMINI_API_KEY missing in .env');
 }
 
 /**
- * Retry a Gemini API call with exponential backoff on transient errors (429/503).
+ * Retry a Gemini API call with fast failure on quota errors.
+ * Only retries on 503 (server overload). 429 (quota) errors fail fast.
  * @param {Function} fn - Async function to retry
- * @param {number} maxRetries - Maximum retry attempts (default: 2)
+ * @param {number} maxRetries - Maximum retry attempts (default: 1)
  * @returns {Promise<any>} Result of fn()
  */
-const withRetry = async (fn, maxRetries = 2) => {
+const withRetry = async (fn, maxRetries = 1) => {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
-      const isRetryable = error.message && (error.message.includes('503') || error.message.includes('429'));
-      if (isRetryable && attempt < maxRetries) {
-        const delayMs = (attempt + 1) * 2000; // 2s, 4s
-        console.log(`[Gemini AI] Retryable error, waiting ${delayMs}ms before attempt ${attempt + 2}...`);
+      const is503 = error.message && error.message.includes('503');
+      const is429 = error.message && error.message.includes('429');
+      // Only retry on 503 (transient server error), not on 429 (quota — pointless to retry quickly)
+      if (is503 && attempt < maxRetries) {
+        const delayMs = (attempt + 1) * 1000; // 1s, 2s
+        console.log(`[Gemini AI] Server overload (503), retrying in ${delayMs}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } else if (is429) {
+        // Fail fast on quota errors — retrying won't help within seconds
+        throw error;
       } else {
         throw error;
       }
+    }
+  }
+};
+
+/**
+ * Try generating content with the primary model, fall back to secondary on 429.
+ * @param {string} prompt - The prompt text
+ * @param {Object} opts - Optional: { systemInstruction }
+ * @returns {Promise<string>} Generated text
+ */
+const generateWithFallback = async (prompt, opts = {}) => {
+  const models = [MODEL_NAME, FALLBACK_MODEL];
+  for (const modelName of models) {
+    try {
+      const modelOpts = { model: modelName };
+      if (opts.systemInstruction) modelOpts.systemInstruction = opts.systemInstruction;
+      const model = genAI.getGenerativeModel(modelOpts);
+      const result = await withRetry(() => model.generateContent(prompt));
+      return result.response.text().trim();
+    } catch (error) {
+      const is429 = error.message && error.message.includes('429');
+      if (is429 && modelName !== FALLBACK_MODEL) {
+        console.log(`[Gemini AI] Primary model (${modelName}) rate-limited, trying fallback (${FALLBACK_MODEL})...`);
+        continue;
+      }
+      throw error;
     }
   }
 };
@@ -55,8 +88,6 @@ const generateReviewReply = async (homestayName, guestName, rating, reviewText) 
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
     const prompt = `You are a helpful AI assistant for StayWise, an AI-powered homestay management assistant.
 Generate a professional, warm, and appropriate response suggestion to a guest review.
 
@@ -73,8 +104,7 @@ Strict guidelines:
 5. Sign off simply as "The Host Team".
 6. Respond with ONLY the reply text, no introductory or concluding chat remarks.`;
 
-    const result = await withRetry(() => model.generateContent(prompt));
-    return result.response.text().trim();
+    return await generateWithFallback(prompt);
   } catch (error) {
     console.error('[Gemini AI] Generation failed:', error.message);
     return 'Could not generate AI reply suggestion at this time.';
@@ -94,13 +124,16 @@ const generateTouristChatResponse = async (homestay, chatHistory, userMessage) =
     return 'Gemini AI key is not configured. Please add GEMINI_API_KEY to your backend .env file.';
   }
 
-  try {
-    // Format reviews context
-    const reviewsText = homestay.reviews && homestay.reviews.length > 0
-      ? homestay.reviews.slice(0, 5).map((r) => `- Guest: "${r.text}" (Rating: ${r.rating}/5)`).join('\n')
-      : 'No reviews submitted yet.';
+  const models = [MODEL_NAME, FALLBACK_MODEL];
+  let lastError = null;
 
-    const systemInstruction = `You are "StayWise AI Assistant", a friendly, warm, and highly knowledgeable local concierge for the homestay "${homestay.name}" located in "${homestay.location}".
+  for (const modelName of models) {
+    try {
+      const reviewsText = homestay.reviews && homestay.reviews.length > 0
+        ? homestay.reviews.slice(0, 5).map((r) => `- Guest: "${r.text}" (Rating: ${r.rating}/5)`).join('\n')
+        : 'No reviews submitted yet.';
+
+      const systemInstruction = `You are "StayWise AI Assistant", a friendly, warm, and highly knowledgeable local concierge for the homestay "${homestay.name}" located in "${homestay.location}".
 Your goal is to answer questions for potential guests browsing this property.
 
 Property Details:
@@ -123,27 +156,35 @@ Strict guidelines:
 5. Answer questions in the same language they are asked (default to English).
 6. Do NOT include any meta-talk or introductory greetings unless the guest is saying hello.`;
 
-    const model = genAI.getGenerativeModel({ 
-      model: MODEL_NAME,
-      systemInstruction: systemInstruction,
-    });
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: systemInstruction,
+      });
 
-    // Format history for Gemini API
-    const formattedHistory = (chatHistory || []).map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.text }],
-    }));
+      const formattedHistory = (chatHistory || []).map((msg) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }],
+      }));
 
-    const chat = model.startChat({
-      history: formattedHistory,
-    });
+      const chat = model.startChat({
+        history: formattedHistory,
+      });
 
-    const result = await withRetry(() => chat.sendMessage(userMessage));
-    return result.response.text().trim();
-  } catch (error) {
-    console.error('[Gemini AI] Chat generation failed:', error.message);
-    return 'Sorry, I am having trouble connecting to my local guide services right now.';
+      const result = await withRetry(() => chat.sendMessage(userMessage));
+      return result.response.text().trim();
+    } catch (error) {
+      lastError = error;
+      const is429 = error.message && error.message.includes('429');
+      if (is429 && modelName !== FALLBACK_MODEL) {
+        console.log(`[Gemini AI] Primary model (${modelName}) rate-limited for chat, trying fallback (${FALLBACK_MODEL})...`);
+        continue;
+      }
+      break;
+    }
   }
+
+  console.error('[Gemini AI] Chat generation failed:', lastError.message);
+  return 'Sorry, I am having trouble connecting to my local guide services right now.';
 };
 
 /**
@@ -161,8 +202,6 @@ const generateEnhancedDescription = async (name, location, amenities, keywords) 
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
     const prompt = `You are a professional copywriting assistant for StayWise, a premium homestay management assistant.
 Generate an engaging, warm, and highly appealing property description paragraph for a homestay listing.
 
@@ -179,8 +218,7 @@ Strict guidelines:
 4. Do NOT include any placeholder text (e.g., "[Host Name]", "[Your Name]").
 5. Return ONLY the description paragraph. No introductory or closing remarks, no markdown headings, no lists.`;
 
-    const result = await withRetry(() => model.generateContent(prompt));
-    return result.response.text().trim();
+    return await generateWithFallback(prompt);
   } catch (error) {
     console.error('[Gemini AI] Description enhancement failed:', error.message);
     return 'Could not generate AI description at this time.';
@@ -203,7 +241,6 @@ const generateHostInsights = async (reviews) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     const reviewSnippets = reviews.map((r) => `- [${r.rating}/5 stars] "${r.text}"`).join('\n');
 
     const prompt = `You are a professional business consultant for StayWise, a homestay property management platform.
@@ -219,8 +256,7 @@ Strict guidelines:
 3. Keep it warm, professional, encouraging, and highly concise.
 4. Answer with ONLY the summary paragraph. No greetings, introductions, or placeholder formatting.`;
 
-    const result = await withRetry(() => model.generateContent(prompt));
-    return result.response.text().trim();
+    return await generateWithFallback(prompt);
   } catch (error) {
     console.error('[Gemini AI] Review analysis failed:', error.message);
     return 'Could not generate AI review summary at this time.';
@@ -237,8 +273,6 @@ const generateDynamicPricingRecommendation = async (homestay, occupancy, seasona
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
     const prompt = `You are a pricing analyst for StayWise, a premium homestay management assistant.
 Recommend an optimized room rate per night based on the homestay details and owner inputs.
 
@@ -257,8 +291,7 @@ Strict output format:
 SUGGESTED_PRICE: <only a single number representing recommended price in INR, e.g. 2700>
 RATIONALE: <2-3 sentences explaining why this price is recommended based on occupancy level and seasonality factors, no placeholders>`;
 
-    const result = await withRetry(() => model.generateContent(prompt));
-    const text = result.response.text().trim();
+    const text = await generateWithFallback(prompt);
 
     // Parse the output
     const priceMatch = text.match(/SUGGESTED_PRICE:\s*(\d+)/i);
@@ -283,8 +316,6 @@ const generateHostBookingMessage = async (booking, messageType) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
     const checkInStr = new Date(booking.checkIn).toLocaleDateString('en-IN', { dateStyle: 'medium' });
     const checkOutStr = new Date(booking.checkOut).toLocaleDateString('en-IN', { dateStyle: 'medium' });
 
@@ -302,10 +333,88 @@ Guidelines:
 2. If this is a 'checkout' message: Thank them for staying with us, hope they had a pleasant journey home, ask them to kindly write a review on StayWise if they enjoyed their stay, and sign off warmly as their host.
 3. Keep the message friendly, professional, and under 4-5 sentences. Do NOT include any bracketed placeholder text (like [Host Name], [Your Name], [Link]). Use actual details or sign off simply as "Your Host Team".`;
 
-    const result = await withRetry(() => model.generateContent(prompt));
-    return result.response.text().trim();
+    return await generateWithFallback(prompt);
   } catch (error) {
     console.error('[Gemini AI] Message generation failed:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Generate a personalized travel itinerary for a homestay location using Gemini AI.
+ *
+ * @param {Object} params - Trip planning parameters
+ * @param {string} params.location - Destination location
+ * @param {number} params.days - Number of days for the trip
+ * @param {number} params.budget - Total budget in INR
+ * @param {Array<string>} params.interests - Array of interest categories
+ * @param {string} params.travelStyle - Budget, Standard, or Luxury
+ * @returns {Promise<string>} Generated itinerary text
+ */
+const generateTripItinerary = async ({ location, days, budget, interests, travelStyle }) => {
+  if (!genAI) {
+    throw new Error('Gemini AI key is not configured. Please add GEMINI_API_KEY to your backend .env file.');
+  }
+
+  try {
+    const prompt = `You are a professional travel planner and local expert for StayWise, an AI-powered homestay management platform.
+Create a detailed, personalized travel itinerary for a guest visiting ${location}.
+
+Trip Details:
+- Destination: ${location}
+- Duration: ${days} day(s)
+- Total Budget: ₹${budget?.toLocaleString() || budget}
+- Interests: ${(interests || []).join(', ') || 'General sightseeing'}
+- Travel Style: ${travelStyle || 'Standard'}
+
+Generate the itinerary in this EXACT format (use plain text, NO markdown, NO asterisks, NO bold/italic formatting):
+
+===== DAY-WISE ITINERARY =====
+
+For each day from Day 1 to Day ${days}:
+Day X: [Theme for the day]
+Morning:
+[Activity description with specific place names, timings, and brief details]
+Afternoon:
+[Activity description with specific place names, timings, and brief details]
+Evening:
+[Activity description with specific place names, timings, and brief details]
+
+===== PLACES TO VISIT =====
+[List the top must-visit places in ${location} with one-line descriptions]
+
+===== FOOD RECOMMENDATIONS =====
+[List 4-6 local food items and restaurants/eateries to try, suitable for ${travelStyle} style]
+
+===== ESTIMATED DAILY BUDGET =====
+[Break down ₹${budget?.toLocaleString() || budget} across ${days} days]
+Accommodation: ₹___/day
+Food: ₹___/day
+Transport: ₹___/day
+Activities: ₹___/day
+Miscellaneous: ₹___/day
+Total per day: ₹___
+
+===== TRAVEL TIPS =====
+[5-6 practical travel tips specific to ${location}]
+
+===== BEST TIME TO VISIT =====
+[Best months/seasons to visit ${location} and why]
+
+===== PACKING SUGGESTIONS =====
+[6-8 essential items to pack based on ${location} weather and planned activities]
+
+Strict guidelines:
+1. Be specific with real place names, timings, and local details for ${location}.
+2. Keep budget estimates realistic for ${travelStyle} travel style in India.
+3. Tailor activities to the guest's interests: ${(interests || []).join(', ')}.
+4. Do NOT use any markdown formatting (no *, **, #, ##, -, etc). Use plain text only.
+5. Do NOT include any introductory remarks or closing notes. Start directly with the itinerary.
+6. Make the plan feel exciting, actionable, and locally authentic.`;
+
+    return await generateWithFallback(prompt);
+  } catch (error) {
+    console.error('[Gemini AI] Trip itinerary generation failed:', error.message);
     throw error;
   }
 };
@@ -316,5 +425,6 @@ module.exports = {
   generateEnhancedDescription,
   generateHostInsights,
   generateDynamicPricingRecommendation,
-  generateHostBookingMessage
+  generateHostBookingMessage,
+  generateTripItinerary
 };

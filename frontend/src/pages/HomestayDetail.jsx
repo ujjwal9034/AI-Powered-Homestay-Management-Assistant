@@ -5,11 +5,35 @@
  * - Lists all reviews for this homestay with inline owner replies
  * - Allows customers to leave reviews (with star rating picker)
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl, toggleWishlist } from '../services/api'
+import TripPlannerModal from '../components/TripPlannerModal'
+import {
+  ArrowLeft,
+  MapPin,
+  Star,
+  User,
+  Sparkles,
+  Share2,
+  Check,
+  Wifi,
+  Bot,
+  Send,
+  X,
+  MessageSquare,
+  Trash2,
+  PenLine,
+  ArrowUpDown,
+  Zap,
+  LogIn,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  Heart,
+} from 'lucide-react'
 
 export default function HomestayDetail() {
   const { id } = useParams()
@@ -20,6 +44,9 @@ export default function HomestayDetail() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // AI Trip Planner
+  const [isTripPlannerOpen, setIsTripPlannerOpen] = useState(false)
 
   // Chat Drawer Control
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -41,6 +68,12 @@ export default function HomestayDetail() {
   const [rating, setRating] = useState(5)
   const [text, setText] = useState('')
   const [formLoading, setFormLoading] = useState(false)
+
+  // Share state
+  const [shareSuccess, setShareSuccess] = useState(false)
+
+  // Review sort state
+  const [reviewSort, setReviewSort] = useState('newest')
   const [actionMsg, setActionMsg] = useState(null)
 
   const loadHomestay = async () => {
@@ -151,20 +184,70 @@ export default function HomestayDetail() {
         {Array.from({ length: 5 }).map((_, i) => {
           const active = i < (clickable ? currentRating : count)
           return (
-            <svg
+            <Star
               key={i}
               onClick={() => clickable && onSetRating(i + 1)}
-              className={`${size} ${active ? 'text-amber-400' : darkMode ? 'text-gray-600' : 'text-gray-200'} ${clickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
+              className={`${size} ${active ? 'text-amber-400 fill-amber-400' : darkMode ? 'text-gray-600' : 'text-gray-200'} ${clickable ? 'cursor-pointer hover:scale-110 transition-transform' : ''}`}
+            />
           )
         })}
       </div>
     )
   }
+
+  // Sorted reviews
+  const sortedReviews = useMemo(() => {
+    const sorted = [...reviews]
+    switch (reviewSort) {
+      case 'newest': sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break
+      case 'oldest': sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break
+      case 'highest': sorted.sort((a, b) => b.rating - a.rating); break
+      case 'lowest': sorted.sort((a, b) => a.rating - b.rating); break
+    }
+    return sorted
+  }, [reviews, reviewSort])
+
+  // Rating distribution
+  const ratingDist = useMemo(() => {
+    const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    reviews.forEach((r) => { if (dist[r.rating] !== undefined) dist[r.rating]++ })
+    return dist
+  }, [reviews])
+
+  const handleShare = async () => {
+    const url = window.location.href
+    const shareData = { title: homestay.name, text: `Check out ${homestay.name} on StayWise!`, url }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(url)
+        setShareSuccess(true)
+        setTimeout(() => setShareSuccess(false), 2000)
+      }
+    } catch {
+      await navigator.clipboard.writeText(url)
+      setShareSuccess(true)
+      setTimeout(() => setShareSuccess(false), 2000)
+    }
+  }
+
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated) {
+      alert('Please sign in to save properties to your wishlist!')
+      return
+    }
+    try {
+      const res = await toggleWishlist(homestay._id)
+      if (res.success) {
+        updateUser({ wishlist: res.wishlist })
+      }
+    } catch (err) {
+      console.warn('Failed to toggle wishlist:', err.message)
+    }
+  }
+
+  const isWishlisted = user?.wishlist?.includes(homestay?._id)
 
   const inputClass = `w-full rounded-xl border px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500' : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'}`
 
@@ -197,13 +280,14 @@ export default function HomestayDetail() {
         {/* Toast */}
         {actionMsg && (
           <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 ${actionMsg.isError ? (darkMode ? 'bg-red-900/90 text-red-200 border border-red-800' : 'bg-red-500 text-white') : (darkMode ? 'bg-green-900/90 text-green-200 border border-green-800' : 'bg-green-500 text-white')}`} style={{ animation: 'slideDown 0.3s ease-out' }}>
-            <span>{actionMsg.isError ? '❌' : '✅'}</span>{actionMsg.msg}
+            {actionMsg.isError ? <CircleX className="w-4 h-4" /> : <CircleCheck className="w-4 h-4" />}{actionMsg.msg}
           </div>
         )}
 
         {/* Back Button */}
-        <Link to="/dashboard" className={`inline-flex items-center gap-2 mb-6 text-sm font-medium transition-colors ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-          ← Back to Dashboard
+        <Link to="/explore" className={`inline-flex items-center gap-2 mb-6 text-sm font-medium transition-colors ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+          <ArrowLeft className="w-4 h-4" />
+          Back to Explore
         </Link>
 
         {/* Homestay Main Info Card */}
@@ -221,9 +305,35 @@ export default function HomestayDetail() {
                 <h1 className={`text-2xl sm:text-3xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   {homestay.name}
                 </h1>
-                <p className={`mt-1 text-sm flex items-center gap-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  📍 {homestay.location}
+                <p className={`mt-1 text-sm flex items-center gap-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <MapPin className="w-3.5 h-3.5" />
+                  {homestay.location}
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Share button */}
+                <button
+                  onClick={handleShare}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-medium transition-all cursor-pointer ${shareSuccess ? 'border-green-500 bg-green-500/10 text-green-500' : darkMode ? 'border-gray-600 text-gray-400 hover:border-primary-600 hover:text-primary-400' : 'border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600'}`}
+                >
+                  {shareSuccess ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Share2 className="w-3.5 h-3.5" /> Share</>}
+                </button>
+                {/* Wishlist toggle */}
+                {isAuthenticated && user?.role === 'customer' && (
+                  <button
+                    onClick={handleToggleWishlist}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                      isWishlisted
+                        ? 'border-red-500 bg-red-500/10 text-red-500'
+                        : darkMode
+                        ? 'border-gray-600 text-gray-400 hover:border-red-600 hover:text-red-400'
+                        : 'border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-650'
+                    }`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
+                    {isWishlisted ? 'Saved' : 'Save'}
+                  </button>
+                )}
               </div>
               <div className="text-right">
                 <div className={`text-xs font-semibold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Price/Night</div>
@@ -234,13 +344,17 @@ export default function HomestayDetail() {
             </div>
 
             {/* Rating summary */}
-            <div className="flex items-center gap-3 mt-4 py-3 border-y border-dashed border-gray-200 dark:border-gray-700">
-              <span className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>⭐ {homestay.rating}</span>
+            <div className="flex flex-wrap items-center gap-3 mt-4 py-3 border-y border-dashed border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-1.5">
+                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                <span className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{homestay.rating}</span>
+              </div>
               <span className={darkMode ? 'text-gray-600' : 'text-gray-300'}>|</span>
               <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {homestay.totalReviews} reviews on this property
               </span>
-              <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/20 text-primary-500 font-medium">
+              <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/20 text-primary-500 font-medium flex items-center gap-1.5">
+                <User className="w-3 h-3" />
                 Hosted by {homestay.owner?.name}
               </span>
             </div>
@@ -259,13 +373,30 @@ export default function HomestayDetail() {
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {homestay.amenities.map((a) => (
-                    <span key={a} className={`text-xs font-medium px-3 py-1.5 rounded-xl border ${darkMode ? 'bg-dark-900 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
-                      ✨ {a}
+                    <span key={a} className={`text-xs font-medium px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${darkMode ? 'bg-dark-900 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                      <Check className="w-3 h-3 text-primary-500" />
+                      {a}
                     </span>
                   ))}
                 </div>
               </>
             )}
+
+            {/* AI Trip Planner Button */}
+            <div className="mt-6">
+              <button
+                onClick={() => setIsTripPlannerOpen(true)}
+                id="plan-trip-ai-btn"
+                className={`inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-heading font-bold text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 cursor-pointer ${
+                  darkMode
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-violet-500/25'
+                    : 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-violet-500/30'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                Plan My Trip with AI
+              </button>
+            </div>
           </div>
         </div>
 
@@ -278,8 +409,9 @@ export default function HomestayDetail() {
             <div className={`rounded-2xl border p-6 shadow-sm ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               {isCustomer ? (
                 <>
-                  <h3 className={`font-heading font-bold text-base mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Share Your Experience 📝
+                  <h3 className={`font-heading font-bold text-base mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <PenLine className="w-4 h-4 text-primary-500" />
+                    Share Your Experience
                   </h3>
                   <form onSubmit={handleSubmitReview} className="space-y-4">
                     <div>
@@ -332,14 +464,61 @@ export default function HomestayDetail() {
               )}
             </div>
 
+            {/* Rating Distribution Chart */}
+            {reviews.length > 0 && (
+              <div className={`rounded-2xl border p-6 shadow-sm ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                <h3 className={`font-heading font-bold text-base mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Rating Distribution
+                </h3>
+                <div className="space-y-2">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const count = ratingDist[star]
+                    const pct = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0
+                    return (
+                      <div key={star} className="flex items-center gap-3">
+                        <span className={`text-xs font-medium w-6 text-right ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{star}</span>
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        <div className={`flex-1 h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs w-10 text-right font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Guest Reviews List */}
             <div className="space-y-4">
-              <h2 className={`text-xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Guest Reviews ({reviews.length})
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Guest Reviews ({reviews.length})
+                </h2>
+                {reviews.length > 1 && (
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs ${darkMode ? 'border-gray-700 bg-dark-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <ArrowUpDown className="w-3 h-3" />
+                    <select
+                      value={reviewSort}
+                      onChange={(e) => setReviewSort(e.target.value)}
+                      className="bg-transparent focus:outline-none cursor-pointer appearance-none pr-4 text-xs"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="highest">Highest Rating</option>
+                      <option value="lowest">Lowest Rating</option>
+                    </select>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-4">
-                {reviews.map((r) => (
+                {sortedReviews.map((r) => (
                   <div key={r._id} className={`rounded-2xl border p-6 shadow-sm ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3 mb-3">
@@ -356,7 +535,8 @@ export default function HomestayDetail() {
                         </div>
                       </div>
                       {isAuthenticated && (user?.role === 'admin' || user?._id === r.customer?._id) && (
-                        <button onClick={() => handleDeleteReview(r._id)} className={`text-xs font-medium px-2 py-1 rounded-lg border transition-colors cursor-pointer border-red-500/20 text-red-500 hover:bg-red-500/10`}>
+                        <button onClick={() => handleDeleteReview(r._id)} className={`text-xs font-medium px-2 py-1 rounded-lg border transition-colors cursor-pointer border-red-500/20 text-red-500 hover:bg-red-500/10 flex items-center gap-1`}>
+                          <Trash2 className="w-3 h-3" />
                           Delete
                         </button>
                       )}
@@ -370,7 +550,7 @@ export default function HomestayDetail() {
                     {r.ownerReply?.text && (
                       <div className={`mt-4 rounded-xl border p-4 pl-5 border-l-4 ${darkMode ? 'bg-green-900/10 border-green-800 text-green-300' : 'bg-green-50/50 border-green-200 text-green-800'}`}>
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-sm">💬</span>
+                          <MessageSquare className="w-3.5 h-3.5" />
                           <span className="text-xs font-bold uppercase tracking-wider">Host Response</span>
                           <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                             · {new Date(r.ownerReply.repliedAt).toLocaleDateString()}
@@ -512,11 +692,11 @@ export default function HomestayDetail() {
                       disabled={bookingLoading}
                       className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer text-center text-xs"
                     >
-                      {bookingLoading ? 'Processing Booking...' : '⚡ Instant Book'}
+                      {bookingLoading ? 'Processing Booking...' : <><Zap className="w-3.5 h-3.5 inline" /> Instant Book</>}
                     </button>
                   ) : (
-                    <div className={`p-3 rounded-xl text-center text-xs border ${darkMode ? 'border-amber-800/30 bg-amber-900/10 text-amber-400' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
-                      ⚠️ Only guest accounts can make homestay bookings.
+                    <div className={`p-3 rounded-xl text-center text-xs border flex items-center justify-center gap-2 ${darkMode ? 'border-amber-800/30 bg-amber-900/10 text-amber-400' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
+                      <CircleAlert className="w-3.5 h-3.5" /> Only guest accounts can make homestay bookings.
                     </div>
                   )
                 ) : (
@@ -538,10 +718,10 @@ export default function HomestayDetail() {
           {!isChatOpen && (
             <button
               onClick={() => setIsChatOpen(true)}
-              className="relative w-14 h-14 rounded-full bg-primary-500 text-white flex items-center justify-center text-2xl shadow-2xl hover:scale-110 active:scale-95 transition-all cursor-pointer animate-pulse"
+              className="relative w-14 h-14 rounded-full bg-primary-500 text-white flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all cursor-pointer animate-pulse"
               style={{ animationDuration: '3s' }}
             >
-              🤖
+              <Bot className="w-6 h-6" />
               <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-dark-800 rounded-full" />
             </button>
           )}
@@ -557,8 +737,8 @@ export default function HomestayDetail() {
               {/* Header */}
               <div className="px-5 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white flex items-center justify-between shadow-md">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">
-                    🤖
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <Bot className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-xs font-bold leading-none font-heading">AI Local Concierge</h3>
@@ -570,9 +750,9 @@ export default function HomestayDetail() {
                 </div>
                 <button
                   onClick={() => setIsChatOpen(false)}
-                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer text-white"
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-white"
                 >
-                  ✖
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -621,13 +801,20 @@ export default function HomestayDetail() {
                   disabled={chatLoading || !chatInput.trim()}
                   className="px-3 rounded-xl bg-primary-500 text-white hover:bg-primary-600 font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
                 >
-                  ✈️
+                  <Send className="w-3.5 h-3.5" />
                 </button>
               </form>
             </div>
           )}
         </div>
       </div>
+
+      {/* AI Trip Planner Modal */}
+      <TripPlannerModal
+        isOpen={isTripPlannerOpen}
+        onClose={() => setIsTripPlannerOpen(false)}
+        location={homestay.location}
+      />
     </section>
   )
 }
