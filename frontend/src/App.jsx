@@ -6,7 +6,9 @@
  */
 import { Routes, Route } from 'react-router-dom'
 import { useTheme } from './context/ThemeContext'
+import { useAuth } from './context/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import LoadingScreen from './components/LoadingScreen'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -22,6 +24,11 @@ import NotFound from './pages/NotFound'
 
 function App() {
   const { darkMode } = useTheme()
+  const { loading } = useAuth()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   return (
     <ErrorBoundary>

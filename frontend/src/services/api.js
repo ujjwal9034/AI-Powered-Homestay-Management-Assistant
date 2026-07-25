@@ -242,4 +242,10 @@ export const generateTripPlan = async (data) => {
   return response.data;
 };
 
+// ─── Public Stats ───────────────────────────────────────────────────────────────
+export const fetchPublicStats = async () => {
+  const response = await api.get('/api/health/stats');
+  return response.data;
+};
+
 export default api;

@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays } from '../services/api'
+import { useToast } from '../context/ToastContext'
 
 export default function AdminDashboard() {
   const { darkMode } = useTheme()
@@ -18,7 +19,7 @@ export default function AdminDashboard() {
   const [homestays, setHomestays] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const [actionMsg, setActionMsg] = useState(null)
+  const { showToast } = useToast()
 
   useEffect(() => {
     loadData()
@@ -45,8 +46,7 @@ export default function AdminDashboard() {
   }
 
   const showAction = (msg, isError = false) => {
-    setActionMsg({ msg, isError })
-    setTimeout(() => setActionMsg(null), 3000)
+    showToast(msg, isError ? 'error' : 'success')
   }
 
   const handleRoleChange = async (userId, newRole) => {
@@ -98,13 +98,6 @@ export default function AdminDashboard() {
   return (
     <section className="py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Toast */}
-        {actionMsg && (
-          <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 ${actionMsg.isError ? (darkMode ? 'bg-red-900/90 text-red-200 border border-red-800' : 'bg-red-500 text-white') : (darkMode ? 'bg-green-900/90 text-green-200 border border-green-800' : 'bg-green-500 text-white')}`} style={{ animation: 'slideDown 0.3s ease-out' }}>
-            <span>{actionMsg.isError ? '❌' : '✅'}</span>{actionMsg.msg}
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>

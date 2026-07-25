@@ -5,9 +5,11 @@
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { Home, ArrowLeft, Search, Compass } from 'lucide-react'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 export default function NotFound() {
   const { darkMode } = useTheme()
+  useDocumentTitle('Page Not Found')
 
   return (
     <section className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-16 px-4">

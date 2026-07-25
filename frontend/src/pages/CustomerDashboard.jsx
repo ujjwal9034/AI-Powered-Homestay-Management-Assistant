@@ -11,6 +11,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings, resolveImageUrl, cancelBooking, toggleWishlist, fetchWishlist } from '../services/api'
+import { useToast } from '../context/ToastContext'
 import {
   User,
   Building2,
@@ -37,7 +38,7 @@ export default function CustomerDashboard() {
   const [bookings, setBookings] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [loading, setLoading] = useState(true)
-  const [actionMsg, setActionMsg] = useState(null)
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('browse')
 
   const { updateUser, isAuthenticated } = useAuth()
@@ -65,8 +66,7 @@ export default function CustomerDashboard() {
   }, [])
 
   const showAction = (msg, isError = false) => {
-    setActionMsg({ msg, isError })
-    setTimeout(() => setActionMsg(null), 3000)
+    showToast(msg, isError ? 'error' : 'success')
   }
 
   const handleDeleteReview = async (id) => {
@@ -145,14 +145,6 @@ export default function CustomerDashboard() {
   return (
     <section className="py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Toast */}
-        {actionMsg && (
-          <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 ${actionMsg.isError ? (darkMode ? 'bg-red-900/90 text-red-200 border border-red-800' : 'bg-red-500 text-white') : (darkMode ? 'bg-green-900/90 text-green-200 border border-green-800' : 'bg-green-500 text-white')}`} style={{ animation: 'slideDown 0.3s ease-out' }}>
-            {actionMsg.isError ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-            {actionMsg.msg}
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>

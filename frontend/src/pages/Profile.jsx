@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { updateProfile } from '../services/api'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import {
   User,
   Mail,
@@ -29,6 +30,7 @@ import {
 export default function Profile() {
   const { darkMode } = useTheme()
   const { user, updateUser } = useAuth()
+  useDocumentTitle('My Profile')
 
   // Edit states
   const [isEditing, setIsEditing] = useState(false)

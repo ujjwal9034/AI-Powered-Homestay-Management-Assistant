@@ -11,6 +11,8 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl, toggleWishlist } from '../services/api'
 import TripPlannerModal from '../components/TripPlannerModal'
+import useDocumentTitle from '../hooks/useDocumentTitle'
+import { useToast } from '../context/ToastContext'
 import {
   ArrowLeft,
   MapPin,
@@ -38,9 +40,11 @@ import {
 export default function HomestayDetail() {
   const { id } = useParams()
   const { darkMode } = useTheme()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, updateUser } = useAuth()
+  const { showToast } = useToast()
 
   const [homestay, setHomestay] = useState(null)
+  useDocumentTitle(homestay ? homestay.name : 'Loading Homestay...')
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -74,7 +78,6 @@ export default function HomestayDetail() {
 
   // Review sort state
   const [reviewSort, setReviewSort] = useState('newest')
-  const [actionMsg, setActionMsg] = useState(null)
 
   const loadHomestay = async () => {
     try {
@@ -95,8 +98,7 @@ export default function HomestayDetail() {
   }, [id])
 
   const showAction = (msg, isError = false) => {
-    setActionMsg({ msg, isError })
-    setTimeout(() => setActionMsg(null), 3000)
+    showToast(msg, isError ? 'error' : 'success')
   }
 
   const handleSubmitReview = async (e) => {
@@ -234,7 +236,7 @@ export default function HomestayDetail() {
 
   const handleToggleWishlist = async () => {
     if (!isAuthenticated) {
-      alert('Please sign in to save properties to your wishlist!')
+      showAction('Please sign in to save properties to your wishlist!', true)
       return
     }
     try {
@@ -277,13 +279,6 @@ export default function HomestayDetail() {
   return (
     <section className="py-8 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Toast */}
-        {actionMsg && (
-          <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 ${actionMsg.isError ? (darkMode ? 'bg-red-900/90 text-red-200 border border-red-800' : 'bg-red-500 text-white') : (darkMode ? 'bg-green-900/90 text-green-200 border border-green-800' : 'bg-green-500 text-white')}`} style={{ animation: 'slideDown 0.3s ease-out' }}>
-            {actionMsg.isError ? <CircleX className="w-4 h-4" /> : <CircleCheck className="w-4 h-4" />}{actionMsg.msg}
-          </div>
-        )}
-
         {/* Back Button */}
         <Link to="/explore" className={`inline-flex items-center gap-2 mb-6 text-sm font-medium transition-colors ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
           <ArrowLeft className="w-4 h-4" />

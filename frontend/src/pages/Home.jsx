@@ -9,6 +9,7 @@ import { HomestayCardSkeleton } from '../components/SkeletonCard'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { fetchHomestays, resolveImageUrl } from '../services/api'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import {
   Star,
   MessageSquare,
@@ -141,6 +142,7 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
 
 export default function Home() {
   const { darkMode } = useTheme()
+  useDocumentTitle('Home')
   const [featuredHomestays, setFeaturedHomestays] = useState([])
   const [loading, setLoading] = useState(true)
 

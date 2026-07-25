@@ -2,8 +2,11 @@
  * About — Company information page with story, values, team, and CTA.
  * All sections support dark mode through conditional styling.
  */
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import { fetchPublicStats } from '../services/api'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 const values = [
   {
@@ -40,6 +43,27 @@ const team = [
 
 export default function About() {
   const { darkMode } = useTheme()
+  useDocumentTitle('About')
+  const [stats, setStats] = useState({ totalHomestays: 0, totalReviews: 0, totalUsers: 0, totalBookings: 0 })
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const result = await fetchPublicStats()
+        if (result.success) setStats(result.data)
+      } catch (err) {
+        console.warn('Failed to load platform stats:', err.message)
+      }
+    }
+    loadStats()
+  }, [])
+
+  const displayStats = [
+    { val: stats.totalHomestays, label: 'Active Homestays' },
+    { val: stats.totalReviews, label: 'Reviews Managed' },
+    { val: stats.totalUsers, label: 'Registered Users' },
+    { val: stats.totalBookings, label: 'Bookings Made' },
+  ]
 
   return (
     <>
@@ -84,7 +108,7 @@ export default function About() {
                   We realized that AI could handle the repetitive work while preserving the personal touch that makes homestays special. StayWise was built to automate the mundane so owners can focus on what they do best — creating unforgettable experiences for their guests.
                 </p>
                 <p>
-                  Today, StayWise serves hundreds of homestay owners, processing thousands of reviews and tourist interactions every month — with the warmth of a human host and the efficiency of AI.
+                  Today, StayWise serves homestay owners with AI-powered review management, trip planning, and guest communication tools — with the warmth of a human host and the efficiency of AI.
                 </p>
               </div>
             </div>
@@ -93,15 +117,10 @@ export default function About() {
             <div className="relative">
               <div className={`rounded-3xl p-10 border ${darkMode ? 'bg-gradient-to-br from-dark-800 to-dark-800 border-gray-700' : 'bg-gradient-to-br from-primary-50 to-accent-50 border-primary-100/50'}`}>
                 <div className="grid grid-cols-2 gap-6">
-                  {[
-                    { val: '500+', label: 'Active Homestays' },
-                    { val: '10K+', label: 'Reviews Managed' },
-                    { val: '50K+', label: 'Tourist Queries Answered' },
-                    { val: '98%', label: 'Owner Satisfaction' },
-                  ].map(({ val, label }) => (
+                  {displayStats.map(({ val, label }) => (
                     <div key={label} className={`text-center p-4 rounded-2xl shadow-sm ${darkMode ? 'bg-dark-900' : 'bg-white'}`}>
                       <div className="text-2xl font-heading font-bold bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
-                        {val}
+                        {val.toLocaleString()}
                       </div>
                       <div className={`text-xs mt-1 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>{label}</div>
                     </div>

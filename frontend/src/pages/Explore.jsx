@@ -14,6 +14,8 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchHomestays, resolveImageUrl, toggleWishlist } from '../services/api'
 import { HomestayCardSkeleton } from '../components/SkeletonCard'
+import useDocumentTitle from '../hooks/useDocumentTitle'
+import { useToast } from '../context/ToastContext'
 import {
   Search,
   SlidersHorizontal,
@@ -45,6 +47,8 @@ const PRICE_RANGES = [
 export default function Explore() {
   const { darkMode } = useTheme()
   const { user, updateUser, isAuthenticated } = useAuth()
+  const { showToast } = useToast()
+  useDocumentTitle('Explore Homestays')
   const [homestays, setHomestays] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -151,7 +155,7 @@ export default function Explore() {
     e.preventDefault()
     e.stopPropagation()
     if (!isAuthenticated) {
-      alert('Please sign in to save properties to your wishlist!')
+      showToast('Please sign in to save properties to your wishlist!', 'error')
       return
     }
     try {

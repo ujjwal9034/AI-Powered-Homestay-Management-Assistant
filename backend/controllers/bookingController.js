@@ -41,6 +41,21 @@ const createBooking = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You cannot book your own homestay' });
     }
 
+    // Check for overlapping bookings on the same homestay
+    const conflictingBooking = await Booking.findOne({
+      homestay: homestayId,
+      status: { $ne: 'cancelled' },
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
+    });
+
+    if (conflictingBooking) {
+      return res.status(409).json({
+        success: false,
+        message: 'This homestay is already booked for the selected dates. Please choose different dates.',
+      });
+    }
+
     // Calculate duration
     const diffTime = Math.abs(checkOutDate - checkInDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
