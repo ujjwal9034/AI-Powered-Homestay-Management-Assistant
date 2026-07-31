@@ -9,7 +9,8 @@
 
 const Review = require('../models/Review');
 const Homestay = require('../models/Homestay');
-const { generateReviewReply } = require('../config/gemini');
+const Booking = require('../models/Booking');
+const { generateReviewReply, analyzeSentiment } = require('../config/gemini');
 
 /**
  * POST /api/reviews
@@ -38,17 +39,25 @@ const createReview = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You cannot review your own homestay' });
     }
 
-    // Generate AI suggestion in the background
+    // Check if customer has a confirmed booking for this homestay (Verified Guest)
+    const hasBooking = await Booking.findOne({
+      customer: req.user._id,
+      homestay: homestayId,
+      status: 'confirmed',
+    });
+    const isVerified = Boolean(hasBooking);
+
+    // Analyze Sentiment & Generate AI suggestion
     let aiSuggestion = null;
+    let sentiment = { label: rating >= 4 ? 'positive' : rating === 3 ? 'neutral' : 'negative', confidence: 85 };
+
     try {
-      aiSuggestion = await generateReviewReply(
-        homestay.name,
-        req.user.name,
-        rating,
-        text
-      );
+      [aiSuggestion, sentiment] = await Promise.all([
+        generateReviewReply(homestay.name, req.user.name, rating, text),
+        analyzeSentiment(rating, text),
+      ]);
     } catch (err) {
-      console.warn('[Gemini AI] Failed to pre-generate suggestion:', err.message);
+      console.warn('[Gemini AI] Failed background processing:', err.message);
     }
 
     const review = await Review.create({
@@ -57,6 +66,8 @@ const createReview = async (req, res) => {
       rating,
       text,
       aiSuggestion,
+      sentiment,
+      isVerified,
     });
 
     // Update homestay stats
@@ -351,6 +362,43 @@ const generateOnDemandSuggestion = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/reviews/:id/helpful
+ * Protected — Toggle helpful vote on a review.
+ */
+const toggleHelpful = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    const userId = req.user._id;
+    const existingIndex = review.helpfulVotes.indexOf(userId);
+
+    if (existingIndex > -1) {
+      // Remove vote
+      review.helpfulVotes.splice(existingIndex, 1);
+      review.helpfulCount = Math.max(0, review.helpfulCount - 1);
+    } else {
+      // Add vote
+      review.helpfulVotes.push(userId);
+      review.helpfulCount += 1;
+    }
+
+    await review.save();
+
+    res.status(200).json({
+      success: true,
+      helpfulCount: review.helpfulCount,
+      voted: existingIndex === -1,
+    });
+  } catch (error) {
+    console.error('[toggleHelpful] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to toggle helpful vote', error: error.message });
+  }
+};
+
 module.exports = {
   createReview,
   getMyReviews,
@@ -360,4 +408,6 @@ module.exports = {
   updateReview,
   getAllReviews,
   generateOnDemandSuggestion,
+  toggleHelpful,
 };
+

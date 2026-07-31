@@ -12,7 +12,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestays, resolveImageUrl, toggleWishlist } from '../services/api'
+import { fetchHomestays, resolveImageUrl, toggleWishlist, smartSearchHomestays } from '../services/api'
 import { HomestayCardSkeleton } from '../components/SkeletonCard'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useToast } from '../context/ToastContext'
@@ -57,10 +57,31 @@ export default function Explore() {
 
   // Filter/search state
   const [search, setSearch] = useState('')
+  const [isAiSearch, setIsAiSearch] = useState(false)
+  const [aiSearching, setAiSearching] = useState(false)
+  const [aiParsedFilters, setAiParsedFilters] = useState(null)
   const [sortBy, setSortBy] = useState('rating-desc')
   const [priceRange, setPriceRange] = useState(0) // index into PRICE_RANGES
   const [minRating, setMinRating] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
+
+  const handleSmartSearchSubmit = async (e) => {
+    e?.preventDefault()
+    if (!search.trim()) return
+    setAiSearching(true)
+    try {
+      const res = await smartSearchHomestays(search.trim())
+      if (res.success && res.data) {
+        setHomestays(res.data)
+        setAiParsedFilters(res.parsedFilters)
+        showToast('AI analyzed your search query!', 'success')
+      }
+    } catch (err) {
+      showToast('AI Search failed: ' + err.message, 'error')
+    } finally {
+      setAiSearching(false)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -201,22 +222,56 @@ export default function Explore() {
           </p>
 
           {/* Search Bar */}
-          <div className="mt-8 max-w-2xl mx-auto">
-            <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-sm ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/20'}`}>
-              <Search className="w-5 h-5 text-gray-300 shrink-0" />
+          <div className="mt-8 max-w-2xl mx-auto space-y-3">
+            <form onSubmit={isAiSearch ? handleSmartSearchSubmit : (e) => e.preventDefault()} className={`flex items-center gap-2 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-sm transition-all ${isAiSearch ? 'border-amber-400/60 ring-2 ring-amber-400/20' : ''} ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/20'}`}>
+              {isAiSearch ? (
+                <Sparkles className="w-5 h-5 text-amber-400 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
+              ) : (
+                <Search className="w-5 h-5 text-gray-300 shrink-0" />
+              )}
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or location..."
+                placeholder={isAiSearch ? 'Ask AI: e.g. "cozy cottage under ₹3000 in Himachal"' : 'Search by name or location...'}
                 className="flex-1 bg-transparent text-white placeholder-gray-400 text-sm focus:outline-none"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="text-gray-400 hover:text-white cursor-pointer">
+                <button type="button" onClick={() => { setSearch(''); setAiParsedFilters(null); }} className="text-gray-400 hover:text-white cursor-pointer mr-1">
                   <X className="w-4 h-4" />
                 </button>
               )}
-            </div>
+              {isAiSearch ? (
+                <button
+                  type="submit"
+                  disabled={aiSearching || !search.trim()}
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-accent-500 text-white font-semibold text-xs shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {aiSearching ? 'Analyzing...' : 'Ask AI'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAiSearch(true)}
+                  className="px-3 py-1 rounded-xl bg-white/10 border border-white/20 text-amber-300 text-xs font-semibold hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  AI Mode
+                </button>
+              )}
+            </form>
+
+            {isAiSearch && (
+              <div className="flex items-center justify-between text-xs text-amber-300/80 px-2">
+                <span>✨ Powered by Gemini AI natural language search</span>
+                <button
+                  onClick={() => { setIsAiSearch(false); setAiParsedFilters(null); }}
+                  className="text-gray-300 hover:text-white underline cursor-pointer"
+                >
+                  Switch to Standard Search
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className={`absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t ${darkMode ? 'from-dark-900' : 'from-gray-50'} to-transparent`} />

@@ -10,7 +10,7 @@
 const Homestay = require('../models/Homestay');
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
-const { generateTouristChatResponse, generateEnhancedDescription, generateHostInsights, generateDynamicPricingRecommendation } = require('../config/gemini');
+const { generateTouristChatResponse, generateEnhancedDescription, generateHostInsights, generateDynamicPricingRecommendation, parseSmartSearch } = require('../config/gemini');
 
 /**
  * GET /api/homestays
@@ -395,6 +395,69 @@ const suggestHomestayPrice = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/homestays/smart-search
+ * Public — AI-powered natural language query parsing and homestay search.
+ */
+const smartSearch = async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ success: false, message: 'Query string is required' });
+    }
+
+    const parsedFilters = await parseSmartSearch(query.trim());
+    let mongoQuery = {};
+
+    if (parsedFilters.location && parsedFilters.location.trim()) {
+      mongoQuery.location = { $regex: parsedFilters.location.trim(), $options: 'i' };
+    }
+
+    if (parsedFilters.maxPrice && typeof parsedFilters.maxPrice === 'number') {
+      mongoQuery.pricePerNight = { $lte: parsedFilters.maxPrice };
+    }
+
+    if (parsedFilters.minRating && typeof parsedFilters.minRating === 'number') {
+      mongoQuery.rating = { $gte: parsedFilters.minRating };
+    }
+
+    // Search by name/description if location wasn't matched strictly or as fallback
+    if (!parsedFilters.location && parsedFilters.keywords && parsedFilters.keywords.length > 0) {
+      const regexList = parsedFilters.keywords.map(k => new RegExp(k, 'i'));
+      mongoQuery.$or = [
+        { name: { $in: regexList } },
+        { description: { $in: regexList } },
+        { amenities: { $in: regexList } },
+      ];
+    }
+
+    let results = await Homestay.find(mongoQuery).populate('owner', 'name avatar');
+
+    // If strictly filtered query returned nothing, fall back to keyword search across all fields
+    if (results.length === 0) {
+      const fallbackRegex = new RegExp(query.trim(), 'i');
+      results = await Homestay.find({
+        $or: [
+          { name: fallbackRegex },
+          { location: fallbackRegex },
+          { description: fallbackRegex },
+          { amenities: fallbackRegex },
+        ]
+      }).populate('owner', 'name avatar');
+    }
+
+    res.status(200).json({
+      success: true,
+      parsedFilters,
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error('[smartSearch] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to perform smart search', error: error.message });
+  }
+};
+
 module.exports = { 
   getAllHomestays, 
   getMyHomestays, 
@@ -405,5 +468,7 @@ module.exports = {
   chatWithLocalGuide,
   enhanceHomestayDescription,
   getHostAnalytics,
-  suggestHomestayPrice
+  suggestHomestayPrice,
+  smartSearch
 };
+

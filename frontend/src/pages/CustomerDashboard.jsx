@@ -10,7 +10,9 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
-import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings, resolveImageUrl, cancelBooking, toggleWishlist, fetchWishlist } from '../services/api'
+import { fetchHomestays, fetchMyReviews, deleteReview, fetchMyBookings, resolveImageUrl, cancelBooking, toggleWishlist, fetchWishlist, fetchPaymentReceipt } from '../services/api'
+import EmptyState from '../components/EmptyState'
+import ReceiptModal from '../components/ReceiptModal'
 import { useToast } from '../context/ToastContext'
 import {
   User,
@@ -38,10 +40,24 @@ export default function CustomerDashboard() {
   const [bookings, setBookings] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('browse')
 
   const { updateUser, isAuthenticated } = useAuth()
+
+  const handleViewReceipt = async (bookingId) => {
+    try {
+      const res = await fetchPaymentReceipt(bookingId)
+      if (res.success) {
+        setSelectedReceipt(res.receipt)
+        setIsReceiptModalOpen(true)
+      }
+    } catch (err) {
+      showAction('Failed to load payment receipt', true)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -304,15 +320,26 @@ export default function CustomerDashboard() {
                           {booking.homestay?.location}
                         </p>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                        booking.status === 'confirmed'
-                          ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
-                          : booking.status === 'cancelled'
-                          ? darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'
-                          : darkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {booking.status}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                          booking.status === 'confirmed'
+                            ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                            : booking.status === 'cancelled'
+                            ? darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'
+                            : darkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
+                        }`}>
+                          {booking.status}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${
+                          booking.paymentStatus === 'paid'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            : booking.paymentStatus === 'refunded'
+                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        }`}>
+                          💳 {booking.paymentStatus || 'paid'}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 py-3 border-y border-dashed border-gray-200 dark:border-gray-750">
@@ -339,11 +366,30 @@ export default function CustomerDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mt-4">
-                    <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                    </span>
-                    <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={darkMode ? 'text-gray-500' : 'text-gray-400'}>
+                        Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                      </span>
+                      {booking.paymentId && (
+                        <span className={`font-mono text-[11px] px-2 py-0.5 rounded border ${
+                          darkMode ? 'bg-dark-900 border-gray-700 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}>
+                          Txn: {booking.paymentId}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleViewReceipt(booking._id)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                          darkMode
+                            ? 'border-gray-700 text-gray-300 hover:bg-dark-700'
+                            : 'border-gray-200 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        View Invoice
+                      </button>
                       {booking.status !== 'cancelled' && (
                         <button
                           onClick={() => handleCancelBooking(booking._id)}
@@ -357,7 +403,7 @@ export default function CustomerDashboard() {
                         </button>
                       )}
                       <span className={`text-sm font-bold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
-                        Total Price: ₹{booking.totalPrice?.toLocaleString()}
+                        Total: ₹{booking.totalPrice?.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -366,14 +412,14 @@ export default function CustomerDashboard() {
             ))}
             
             {bookings.length === 0 && (
-              <div className={`rounded-2xl border border-dashed p-16 text-center ${darkMode ? 'border-gray-700 bg-dark-850' : 'border-gray-200 bg-gray-50/20'}`}>
-                <Calendar className={`w-12 h-12 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} strokeWidth={1.5} />
-                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  No bookings scheduled. Time to plan your next vacation!
-                </p>
-                <button onClick={() => setActiveTab('browse')} className="mt-3 text-sm text-primary-500 hover:text-primary-600 font-semibold cursor-pointer">
-                  Browse available homestays →
-                </button>
+              <div className="py-8">
+                <EmptyState
+                  type="bookings"
+                  title="No Bookings Scheduled"
+                  description="You haven't made any homestay reservations yet. Explore our top properties and plan your next getaway!"
+                  actionLabel="Browse Available Homestays"
+                  onAction={() => setActiveTab('browse')}
+                />
               </div>
             )}
           </div>
@@ -434,12 +480,14 @@ export default function CustomerDashboard() {
                 </div>
               ))}
               {myReviews.length === 0 && (
-                <div className="flex flex-col items-center py-16 text-center">
-                  <Star className={`w-12 h-12 mb-3 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} strokeWidth={1.5} />
-                  <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>You haven't written any reviews yet</span>
-                  <button onClick={() => setActiveTab('browse')} className="mt-3 text-sm text-primary-500 hover:text-primary-600 font-medium cursor-pointer">
-                    Browse homestays to write your first review →
-                  </button>
+                <div className="p-8">
+                  <EmptyState
+                    type="reviews"
+                    title="No Reviews Written Yet"
+                    description="You haven't written any guest reviews yet. Visit a homestay page to share your experience!"
+                    actionLabel="Explore Properties to Review"
+                    onAction={() => setActiveTab('browse')}
+                  />
                 </div>
               )}
             </div>
@@ -503,6 +551,12 @@ export default function CustomerDashboard() {
           </div>
         )}
       </div>
+
+      <ReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        receipt={selectedReceipt}
+      />
     </section>
   )
 }

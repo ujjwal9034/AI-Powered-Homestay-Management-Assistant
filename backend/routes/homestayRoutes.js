@@ -18,10 +18,12 @@ const {
   enhanceHomestayDescription,
   getHostAnalytics,
   suggestHomestayPrice,
+  smartSearch,
 } = require('../controllers/homestayController');
 
 // Public routes
 router.get('/', getAllHomestays);
+router.post('/smart-search', smartSearch);
 
 // Protected: Owner gets own homestays (must be before /:id)
 router.get('/mine', protect, authorize('owner', 'admin'), getMyHomestays);

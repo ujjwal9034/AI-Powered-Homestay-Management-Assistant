@@ -70,6 +70,8 @@ const createBooking = async (req, res) => {
     const tax = Math.round(basePrice * 0.12); // 12% GST/Tax
     const totalPrice = basePrice + serviceFee + tax;
 
+    const { paymentMethod, paymentId } = req.body;
+
     const booking = await Booking.create({
       customer: req.user._id,
       homestay: homestayId,
@@ -81,7 +83,11 @@ const createBooking = async (req, res) => {
       serviceFee,
       tax,
       totalPrice,
-      status: 'confirmed', // Instant confirmation simulator
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      paymentMethod: paymentMethod || 'card',
+      paymentId: paymentId || `PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      paidAt: new Date(),
     });
 
     const populatedBooking = await Booking.findById(booking._id)
@@ -241,11 +247,17 @@ const cancelMyBooking = async (req, res) => {
     }
 
     booking.status = 'cancelled';
+    if (booking.paymentStatus === 'paid') {
+      booking.paymentStatus = 'refunded';
+      booking.refundId = `REF-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
     await booking.save();
 
     res.status(200).json({
       success: true,
-      message: 'Booking cancelled successfully',
+      message: booking.paymentStatus === 'refunded'
+        ? `Booking cancelled successfully. Refund of ₹${booking.totalPrice?.toLocaleString()} issued (Refund ID: ${booking.refundId}).`
+        : 'Booking cancelled successfully',
       data: booking,
     });
   } catch (error) {

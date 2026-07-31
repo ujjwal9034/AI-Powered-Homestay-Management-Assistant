@@ -2,12 +2,43 @@
  * Hero — Landing page hero section with gradient background, stats, and CTAs.
  * Enhanced with Lucide icons and scroll-to-explore indicator.
  */
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
-import { ArrowRight, ChevronDown, Building2, Star, ThumbsUp } from 'lucide-react'
+import { ArrowRight, ChevronDown, Building2, Star, ThumbsUp, Sparkles } from 'lucide-react'
+
+const TYPEWRITER_PHRASES = [
+  'Reviews with AI',
+  'Dynamic Pricing',
+  'AI Trip Planning',
+  'Local Guide Chat',
+]
 
 export default function Hero() {
   const { darkMode } = useTheme()
+  const [phraseIndex, setPhraseIndex] = useState(0)
+  const [currentText, setCurrentText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    const targetPhrase = TYPEWRITER_PHRASES[phraseIndex]
+    const speed = isDeleting ? 40 : 80
+
+    const timer = setTimeout(() => {
+      if (!isDeleting && currentText === targetPhrase) {
+        setTimeout(() => setIsDeleting(true), 1800)
+      } else if (isDeleting && currentText === '') {
+        setIsDeleting(false)
+        setPhraseIndex((prev) => (prev + 1) % TYPEWRITER_PHRASES.length)
+      } else {
+        setCurrentText(
+          targetPhrase.substring(0, isDeleting ? currentText.length - 1 : currentText.length + 1)
+        )
+      }
+    }, speed)
+
+    return () => clearTimeout(timer)
+  }, [currentText, isDeleting, phraseIndex])
 
   return (
     <section className="relative overflow-hidden bg-dark-950 min-h-[80vh] flex items-center justify-center">
@@ -29,17 +60,18 @@ export default function Hero() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-40">
         <div className="max-w-3xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-primary-300 text-xs font-medium tracking-wide uppercase mb-8">
-            <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
-            AI-Powered Hospitality
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-primary-300 text-xs font-medium tracking-wide uppercase mb-8 shadow-inner">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} />
+            AI-Powered Hospitality Assistant
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-white leading-tight tracking-tight">
-            Manage Your Homestay{' '}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-white leading-tight tracking-tight min-h-[120px] sm:min-h-[140px]">
+            Elevate Your Homestay{' '}
+            <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-primary-300 via-primary-400 to-accent-400 bg-clip-text text-transparent">
-              Smarter
-            </span>{' '}
-            with AI
+              {currentText}
+            </span>
+            <span className="inline-block w-1 h-8 sm:h-12 ml-1 bg-amber-400 animate-pulse align-middle" />
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">

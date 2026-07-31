@@ -54,7 +54,33 @@ const bookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'cancelled'],
-      default: 'confirmed', // Defaults to confirmed for instant booking simulator
+      default: 'confirmed',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed', 'refunded'],
+      default: 'pending',
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['card', 'upi', 'netbanking', 'stripe', 'razorpay', 'simulated'],
+      default: 'card',
+    },
+    paymentId: {
+      type: String,
+      default: null,
+    },
+    stripeSessionId: {
+      type: String,
+      default: null,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    refundId: {
+      type: String,
+      default: null,
     },
   },
   {

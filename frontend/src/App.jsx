@@ -20,6 +20,9 @@ import Login from './pages/Login'
 import Profile from './pages/Profile'
 import OAuthCallback from './pages/OAuthCallback'
 import HomestayDetail from './pages/HomestayDetail'
+import Checkout from './pages/Checkout'
+import PaymentSuccess from './pages/PaymentSuccess'
+import ScrollToTop from './components/ScrollToTop'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -33,6 +36,7 @@ function App() {
   return (
     <ErrorBoundary>
       <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-dark-900 text-gray-100' : 'bg-gray-50 text-gray-800'}`}>
+        <ScrollToTop />
         <Navbar />
         <main className="flex-1">
           <Routes>
@@ -42,6 +46,22 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route path="/homestays/:id" element={<HomestayDetail />} />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <Checkout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment-success"
+              element={
+                <ProtectedRoute>
+                  <PaymentSuccess />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/dashboard"
               element={

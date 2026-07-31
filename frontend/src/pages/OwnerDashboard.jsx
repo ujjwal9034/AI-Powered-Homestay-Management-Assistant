@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl } from '../services/api'
+import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
 
 export default function OwnerDashboard() {
@@ -526,15 +527,27 @@ export default function OwnerDashboard() {
                         }`}>
                           {booking.status}
                         </span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          booking.paymentStatus === 'paid'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            : booking.paymentStatus === 'refunded'
+                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        }`}>
+                          💳 {booking.paymentStatus || 'paid'}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
 
                 {bookings.length === 0 && (
-                  <div className="flex flex-col items-center py-16">
-                    <span className="text-4xl mb-3">📅</span>
-                    <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No guest reservations booked yet</span>
+                  <div className="p-8">
+                    <EmptyState
+                      type="bookings"
+                      title="No Guest Reservations"
+                      description="You don't have any bookings on your properties yet. Ensure your pricing and property photos are up to date!"
+                    />
                   </div>
                 )}
               </div>
@@ -563,21 +576,34 @@ export default function OwnerDashboard() {
                 </h2>
               </div>
               <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                {(reviews[selectedHomestay] || []).map((review) => (
-                  <div key={review._id} className={`p-6 ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
-                            {review.customer?.name?.charAt(0) || '?'}
+                {(reviews[selectedHomestay] || []).map((review) => {
+                  const sentimentLabel = review.sentiment?.label || (review.rating >= 4 ? 'positive' : review.rating === 3 ? 'neutral' : 'negative')
+                  return (
+                    <div key={review._id} className={`p-6 ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                              {review.customer?.name?.charAt(0) || '?'}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{review.customer?.name || 'Guest'}</h3>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                  sentimentLabel === 'positive'
+                                    ? 'bg-green-500/15 text-green-500 border border-green-500/20'
+                                    : sentimentLabel === 'neutral'
+                                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20'
+                                    : 'bg-red-500/15 text-red-500 border border-red-500/20'
+                                }`}>
+                                  {sentimentLabel}
+                                </span>
+                              </div>
+                              <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{review.customer?.email}</span>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{review.customer?.name || 'Guest'}</h3>
-                            <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{review.customer?.email}</span>
-                          </div>
-                        </div>
-                        {renderStars(review.rating)}
-                        <p className={`text-sm leading-relaxed mt-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.text}</p>
+                          {renderStars(review.rating)}
+                          <p className={`text-sm leading-relaxed mt-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.text}</p>
 
                         {/* AI Suggestion Section */}
                         {!review.ownerReply?.text && (
@@ -655,11 +681,14 @@ export default function OwnerDashboard() {
                       </span>
                     </div>
                   </div>
-                ))}
+                )})}
                 {(reviews[selectedHomestay] || []).length === 0 && (
-                  <div className="flex flex-col items-center py-16">
-                    <span className="text-4xl mb-3">📭</span>
-                    <span className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>No reviews for this property yet</span>
+                  <div className="p-8">
+                    <EmptyState
+                      type="reviews"
+                      title="No Guest Reviews Yet"
+                      description="This property hasn't received any reviews yet. Share your listing with guests to start building your hospitality reputation!"
+                    />
                   </div>
                 )}
               </div>

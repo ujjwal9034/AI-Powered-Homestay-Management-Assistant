@@ -16,6 +16,7 @@ const {
   updateReview,
   getAllReviews,
   generateOnDemandSuggestion,
+  toggleHelpful,
 } = require('../controllers/reviewController');
 
 // Admin: get all reviews across platform
@@ -35,6 +36,9 @@ router.patch('/:id/reply', protect, authorize('owner', 'admin'), replyToReview);
 
 // Owner: generate fresh AI reply suggestion
 router.post('/:id/suggest', protect, authorize('owner', 'admin'), generateOnDemandSuggestion);
+
+// Protected: toggle helpful vote on review
+router.patch('/:id/helpful', protect, toggleHelpful);
 
 // Customer/Admin: update a review
 router.put('/:id', protect, authorize('customer', 'admin'), updateReview);

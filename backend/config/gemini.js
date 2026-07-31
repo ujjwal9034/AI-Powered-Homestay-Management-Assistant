@@ -419,6 +419,71 @@ Strict guidelines:
   }
 };
 
+/**
+ * Analyze sentiment of a guest review text and rating.
+ * Returns { label: 'positive' | 'neutral' | 'negative', confidence: number }
+ */
+const analyzeSentiment = async (rating, text) => {
+  if (!genAI) {
+    const label = rating >= 4 ? 'positive' : rating === 3 ? 'neutral' : 'negative';
+    return { label, confidence: 85 };
+  }
+
+  try {
+    const prompt = `Analyze the sentiment of this review for a homestay:
+Rating: ${rating}/5
+Review Text: "${text}"
+
+Respond in exact JSON format only:
+{
+  "label": "positive" | "neutral" | "negative",
+  "confidence": <number between 50 and 99>
+}`;
+
+    const rawResponse = await generateWithFallback(prompt);
+    const cleaned = rawResponse.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      label: ['positive', 'neutral', 'negative'].includes(parsed.label) ? parsed.label : (rating >= 4 ? 'positive' : rating === 3 ? 'neutral' : 'negative'),
+      confidence: parsed.confidence || 90
+    };
+  } catch (err) {
+    console.warn('[Gemini AI] Sentiment analysis failed, fallback:', err.message);
+    const label = rating >= 4 ? 'positive' : rating === 3 ? 'neutral' : 'negative';
+    return { label, confidence: 80 };
+  }
+};
+
+/**
+ * Parse a natural language search query into structured search criteria.
+ * Returns { location, maxPrice, minRating, keywords }
+ */
+const parseSmartSearch = async (userQuery) => {
+  if (!genAI) {
+    return { query: userQuery };
+  }
+
+  try {
+    const prompt = `You are a travel search assistant. Parse this natural language search query into structured filters for homestay properties:
+Query: "${userQuery}"
+
+Return JSON ONLY with this schema:
+{
+  "location": "<location name or empty string if not mentioned>",
+  "maxPrice": <number or null if not mentioned>,
+  "minRating": <number 1-5 or null if not mentioned>,
+  "keywords": ["<extracted feature 1>", "<extracted feature 2>"]
+}`;
+
+    const rawResponse = await generateWithFallback(prompt);
+    const cleaned = rawResponse.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.warn('[Gemini AI] Smart search parsing failed, fallback:', err.message);
+    return { query: userQuery };
+  }
+};
+
 module.exports = {
   generateReviewReply,
   generateTouristChatResponse,
@@ -426,5 +491,8 @@ module.exports = {
   generateHostInsights,
   generateDynamicPricingRecommendation,
   generateHostBookingMessage,
-  generateTripItinerary
+  generateTripItinerary,
+  analyzeSentiment,
+  parseSmartSearch
 };
+

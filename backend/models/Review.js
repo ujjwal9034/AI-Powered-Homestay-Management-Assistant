@@ -47,6 +47,24 @@ const reviewSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    sentiment: {
+      label: { type: String, enum: ['positive', 'neutral', 'negative'], default: 'positive' },
+      confidence: { type: Number, default: 90 },
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    helpfulCount: {
+      type: Number,
+      default: 0,
+    },
+    helpfulVotes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

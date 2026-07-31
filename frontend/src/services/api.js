@@ -104,6 +104,11 @@ export const deleteHomestay = async (id) => {
   return response.data;
 };
 
+export const smartSearchHomestays = async (query) => {
+  const response = await api.post('/api/homestays/smart-search', { query }, { timeout: 30000 });
+  return response.data;
+};
+
 // ─── Review API ─────────────────────────────────────────────────────────────────
 
 export const fetchMyReviews = async () => {
@@ -138,6 +143,11 @@ export const replyToReview = async (id, text) => {
 
 export const requestReviewSuggestion = async (id) => {
   const response = await api.post(`/api/reviews/${id}/suggest`, {}, { timeout: 30000 });
+  return response.data;
+};
+
+export const toggleHelpfulVote = async (id) => {
+  const response = await api.patch(`/api/reviews/${id}/helpful`);
   return response.data;
 };
 
@@ -201,6 +211,22 @@ export const updateBookingStatus = async (id, status) => {
 
 export const cancelBooking = async (id) => {
   const response = await api.patch(`/api/bookings/${id}/cancel`);
+  return response.data;
+};
+
+// Payment APIs
+export const createPaymentSession = async (data) => {
+  const response = await api.post('/api/payments/create-session', data);
+  return response.data;
+};
+
+export const verifyPayment = async (data) => {
+  const response = await api.post('/api/payments/verify', data);
+  return response.data;
+};
+
+export const fetchPaymentReceipt = async (bookingId) => {
+  const response = await api.get(`/api/payments/receipt/${bookingId}`);
   return response.data;
 };
 

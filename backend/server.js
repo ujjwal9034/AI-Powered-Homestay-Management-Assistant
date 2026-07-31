@@ -24,6 +24,7 @@ const authRoutes = require('./routes/authRoutes');
 const homestayRoutes = require('./routes/homestayRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 
@@ -81,6 +82,7 @@ app.use('/api/reviews', generalLimiter, reviewRoutes);
 app.use('/api/homestays', generalLimiter, homestayRoutes);
 app.use('/api/admin', generalLimiter, adminRoutes);
 app.use('/api/bookings', generalLimiter, bookingRoutes);
+app.use('/api/payments', generalLimiter, paymentRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/upload', generalLimiter, uploadRoutes);
 app.use('/api/ai', aiLimiter, aiRoutes);

@@ -6,11 +6,13 @@
  * - Allows customers to leave reviews (with star rating picker)
  */
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl, toggleWishlist } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl, toggleWishlist, toggleHelpfulVote } from '../services/api'
 import TripPlannerModal from '../components/TripPlannerModal'
+import PaymentModal from '../components/PaymentModal'
+import EmptyState from '../components/EmptyState'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useToast } from '../context/ToastContext'
 import {
@@ -35,10 +37,13 @@ import {
   CircleCheck,
   CircleX,
   Heart,
+  ThumbsUp,
+  ShieldCheck,
 } from 'lucide-react'
 
 export default function HomestayDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { darkMode } = useTheme()
   const { user, isAuthenticated, updateUser } = useAuth()
   const { showToast } = useToast()
@@ -60,6 +65,8 @@ export default function HomestayDetail() {
   const [bookingCheckOut, setBookingCheckOut] = useState('')
   const [bookingGuests, setBookingGuests] = useState(1)
   const [bookingLoading, setBookingLoading] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [paymentBookingData, setPaymentBookingData] = useState(null)
 
   // Chat states
   const [chatMessages, setChatMessages] = useState([
@@ -134,6 +141,33 @@ export default function HomestayDetail() {
     }
   }
 
+  const handleToggleHelpful = async (reviewId) => {
+    if (!isAuthenticated) {
+      showAction('Please sign in to vote on reviews', true)
+      return
+    }
+    try {
+      const res = await toggleHelpfulVote(reviewId)
+      if (res.success) {
+        setReviews((prev) =>
+          prev.map((r) =>
+            r._id === reviewId
+              ? {
+                  ...r,
+                  helpfulCount: res.helpfulCount,
+                  helpfulVotes: res.voted
+                    ? [...(r.helpfulVotes || []), user._id]
+                    : (r.helpfulVotes || []).filter((v) => v !== user._id),
+                }
+              : r
+          )
+        )
+      }
+    } catch (err) {
+      showAction('Failed to update vote', true)
+    }
+  }
+
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!chatInput.trim() || chatLoading) return
@@ -161,23 +195,23 @@ export default function HomestayDetail() {
     e.preventDefault()
     if (!bookingCheckIn || !bookingCheckOut) return
 
-    setBookingLoading(true)
-    try {
-      await createBooking({
-        homestayId: id,
-        checkIn: bookingCheckIn,
-        checkOut: bookingCheckOut,
-        guestsCount: bookingGuests,
-      })
-      showAction('Booking confirmed! Redirecting...')
-      setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 1500)
-    } catch (err) {
-      showAction(err.response?.data?.message || 'Failed to create booking', true)
-    } finally {
-      setBookingLoading(false)
+    const checkInDate = new Date(bookingCheckIn)
+    const checkOutDate = new Date(bookingCheckOut)
+
+    if (checkOutDate <= checkInDate) {
+      showAction('Check-out date must be after check-in date', true)
+      return
     }
+
+    navigate(`/checkout?homestayId=${id}&checkIn=${bookingCheckIn}&checkOut=${bookingCheckOut}&guestsCount=${bookingGuests}`)
+  }
+
+  const handlePaymentSuccess = (confirmedBooking) => {
+    setIsPaymentModalOpen(false)
+    showAction('Payment Verified & Booking Confirmed!')
+    setTimeout(() => {
+      window.location.href = '/dashboard'
+    }, 1500)
   }
 
   const renderStars = (count, size = 'w-4 h-4', clickable = false, currentRating = 0, onSetRating = () => {}) => {
@@ -479,7 +513,7 @@ export default function HomestayDetail() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className={`text-xs w-10 text-right font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <span className={`text-xs min-w-[70px] text-right font-medium whitespace-nowrap ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {count} ({pct}%)
                         </span>
                       </div>
@@ -513,49 +547,87 @@ export default function HomestayDetail() {
               </div>
 
               <div className="space-y-4">
-                {sortedReviews.map((r) => (
-                  <div key={r._id} className={`rounded-2xl border p-6 shadow-sm ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold">
-                          {r.customer?.name?.charAt(0)?.toUpperCase()}
+                {sortedReviews.map((r) => {
+                  const isVoted = user && r.helpfulVotes?.includes(user._id)
+                  const sentimentLabel = r.sentiment?.label || (r.rating >= 4 ? 'positive' : r.rating === 3 ? 'neutral' : 'negative')
+                  return (
+                    <div key={r._id} className={`rounded-2xl border p-6 shadow-sm transition-all ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold shrink-0">
+                            {r.customer?.name?.charAt(0)?.toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {r.customer?.name}
+                              </h4>
+                              {r.isVerified && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20" title="Confirmed Guest Stay">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  Verified Guest
+                                </span>
+                              )}
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                sentimentLabel === 'positive'
+                                  ? 'bg-green-500/15 text-green-500 border border-green-500/20'
+                                  : sentimentLabel === 'neutral'
+                                  ? 'bg-amber-500/15 text-amber-500 border border-amber-500/20'
+                                  : 'bg-red-500/15 text-red-500 border border-red-500/20'
+                              }`}>
+                                {sentimentLabel}
+                              </span>
+                            </div>
+                            <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              {new Date(r.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {r.customer?.name}
-                          </h4>
-                          <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            {new Date(r.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </span>
-                        </div>
+                        {isAuthenticated && (user?.role === 'admin' || user?._id === r.customer?._id) && (
+                          <button onClick={() => handleDeleteReview(r._id)} className={`text-xs font-medium px-2 py-1 rounded-lg border transition-colors cursor-pointer border-red-500/20 text-red-500 hover:bg-red-500/10 flex items-center gap-1`}>
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </button>
+                        )}
                       </div>
-                      {isAuthenticated && (user?.role === 'admin' || user?._id === r.customer?._id) && (
-                        <button onClick={() => handleDeleteReview(r._id)} className={`text-xs font-medium px-2 py-1 rounded-lg border transition-colors cursor-pointer border-red-500/20 text-red-500 hover:bg-red-500/10 flex items-center gap-1`}>
-                          <Trash2 className="w-3 h-3" />
-                          Delete
+                      {renderStars(r.rating, 'w-3.5 h-3.5')}
+                      <p className={`text-sm leading-relaxed mt-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {r.text}
+                      </p>
+
+                      {/* Helpful Button */}
+                      <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/60">
+                        <button
+                          onClick={() => handleToggleHelpful(r._id)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                            isVoted
+                              ? 'bg-primary-500/15 border-primary-500/40 text-primary-400 font-bold'
+                              : darkMode
+                              ? 'border-gray-700 text-gray-400 hover:border-gray-600 hover:bg-dark-900'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <ThumbsUp className={`w-3.5 h-3.5 ${isVoted ? 'fill-current' : ''}`} />
+                          Helpful {r.helpfulCount > 0 ? `(${r.helpfulCount})` : ''}
                         </button>
+                      </div>
+
+                      {/* Inline owner reply */}
+                      {r.ownerReply?.text && (
+                        <div className={`mt-4 rounded-xl border p-4 pl-5 border-l-4 ${darkMode ? 'bg-green-900/10 border-green-800 text-green-300' : 'bg-green-50/50 border-green-200 text-green-800'}`}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Host Response</span>
+                            <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              · {new Date(r.ownerReply.repliedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm">{r.ownerReply.text}</p>
+                        </div>
                       )}
                     </div>
-                    {renderStars(r.rating, 'w-3.5 h-3.5')}
-                    <p className={`text-sm leading-relaxed mt-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {r.text}
-                    </p>
-
-                    {/* Inline owner reply */}
-                    {r.ownerReply?.text && (
-                      <div className={`mt-4 rounded-xl border p-4 pl-5 border-l-4 ${darkMode ? 'bg-green-900/10 border-green-800 text-green-300' : 'bg-green-50/50 border-green-200 text-green-800'}`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span className="text-xs font-bold uppercase tracking-wider">Host Response</span>
-                          <span className={`text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                            · {new Date(r.ownerReply.repliedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-sm">{r.ownerReply.text}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
 
                 {reviews.length === 0 && (
                   <div className={`rounded-2xl border border-dashed p-8 text-center ${darkMode ? 'border-gray-700 bg-dark-850' : 'border-gray-200 bg-gray-50/30'}`}>
@@ -682,13 +754,26 @@ export default function HomestayDetail() {
                 {/* Action button */}
                 {isAuthenticated ? (
                   user?.role === 'customer' ? (
-                    <button
-                      type="submit"
-                      disabled={bookingLoading}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer text-center text-xs"
-                    >
-                      {bookingLoading ? 'Processing Booking...' : <><Zap className="w-3.5 h-3.5 inline" /> Instant Book</>}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        type="submit"
+                        disabled={bookingLoading}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg shadow-primary-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer text-center text-xs"
+                      >
+                        {bookingLoading ? 'Preparing Checkout...' : <><Zap className="w-3.5 h-3.5 inline mr-1" /> Proceed to Payment</>}
+                      </button>
+                      {bookingCheckIn && bookingCheckOut && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/checkout?homestayId=${id}&checkIn=${bookingCheckIn}&checkOut=${bookingCheckOut}&guestsCount=${bookingGuests}`)}
+                          className={`w-full py-2 rounded-xl text-[11px] font-semibold transition-colors cursor-pointer text-center border ${
+                            darkMode ? 'border-gray-700 text-gray-400 hover:text-white hover:bg-dark-900' : 'border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                        >
+                          Open Dedicated Checkout Page →
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div className={`p-3 rounded-xl text-center text-xs border flex items-center justify-center gap-2 ${darkMode ? 'border-amber-800/30 bg-amber-900/10 text-amber-400' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
                       <CircleAlert className="w-3.5 h-3.5" /> Only guest accounts can make homestay bookings.
@@ -809,6 +894,14 @@ export default function HomestayDetail() {
         isOpen={isTripPlannerOpen}
         onClose={() => setIsTripPlannerOpen(false)}
         location={homestay.location}
+      />
+
+      {/* Payment Gateway Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        bookingData={paymentBookingData}
+        onSuccess={handlePaymentSuccess}
       />
     </section>
   )

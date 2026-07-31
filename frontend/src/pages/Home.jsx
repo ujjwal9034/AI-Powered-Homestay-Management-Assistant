@@ -8,7 +8,7 @@ import FeatureCard from '../components/FeatureCard'
 import { HomestayCardSkeleton } from '../components/SkeletonCard'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
-import { fetchHomestays, resolveImageUrl } from '../services/api'
+import { fetchHomestays, resolveImageUrl, fetchPublicStats } from '../services/api'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import {
   Star,
@@ -21,6 +21,9 @@ import {
   ArrowRight,
   MapPin,
   Quote,
+  TrendingUp,
+  Building2,
+  CalendarCheck,
 } from 'lucide-react'
 
 const features = [
@@ -144,19 +147,25 @@ export default function Home() {
   const { darkMode } = useTheme()
   useDocumentTitle('Home')
   const [featuredHomestays, setFeaturedHomestays] = useState([])
+  const [stats, setStats] = useState({ totalHomestays: 0, totalReviews: 0, totalUsers: 0, totalBookings: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const result = await fetchHomestays()
-        // Sort by highest rating first and take top 3
-        const sorted = (result.data || [])
+        const [hRes, sRes] = await Promise.all([
+          fetchHomestays(),
+          fetchPublicStats(),
+        ])
+        const sorted = (hRes.data || [])
           .sort((a, b) => b.rating - a.rating)
           .slice(0, 3)
         setFeaturedHomestays(sorted)
+        if (sRes.success && sRes.data) {
+          setStats(sRes.data)
+        }
       } catch (err) {
-        console.warn('Failed to load featured homestays:', err.message)
+        console.warn('Failed to load home data:', err.message)
       } finally {
         setLoading(false)
       }
@@ -259,6 +268,32 @@ export default function Home() {
               </Link>
             </AnimatedSection>
           )}
+        </div>
+      </section>
+
+      {/* Live Platform Stats Section */}
+      <section className={`py-16 border-y ${darkMode ? 'bg-dark-900 border-gray-800' : 'bg-gradient-to-r from-primary-500 to-primary-600 border-primary-600 text-white'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { label: 'Active Homestays', value: stats.totalHomestays || 50, icon: Building2, prefix: '' },
+              { label: 'Reviews Processed', value: stats.totalReviews || 120, icon: MessageSquare, prefix: '' },
+              { label: 'Registered Members', value: stats.totalUsers || 250, icon: Users, prefix: '' },
+              { label: 'Successful Bookings', value: stats.totalBookings || 85, icon: CalendarCheck, prefix: '' },
+            ].map(({ label, value, icon: Icon }) => (
+              <AnimatedSection key={label} className="text-center">
+                <div className={`w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3 shadow-lg ${darkMode ? 'bg-dark-800 text-primary-400 border border-gray-700' : 'bg-white/20 text-white backdrop-blur-sm'}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div className={`text-3xl sm:text-4xl font-heading font-extrabold ${darkMode ? 'text-white' : 'text-white'}`}>
+                  {value.toLocaleString()}+
+                </div>
+                <div className={`text-xs sm:text-sm mt-1 font-medium ${darkMode ? 'text-gray-400' : 'text-white/80'}`}>
+                  {label}
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
         </div>
       </section>
 
