@@ -8,7 +8,7 @@ An AI-powered platform that helps homestay owners manage guest reviews, customer
 
 ## Live Backend
 
-[https://staywise-kappa.vercel.app/api/health](https://staywise-kappa.vercel.app/api/health) (Vercel) / [https://staywise-backend.onrender.com/api/health](https://staywise-backend.onrender.com/api/health) (Render)
+[https://staywise-kappa.vercel.app/api/health](https://staywise-kappa.vercel.app/api/health)
 
 ## Tech Stack Summary
 
@@ -17,7 +17,7 @@ An AI-powered platform that helps homestay owners manage guest reviews, customer
 - **Database**: MongoDB Atlas
 - **Authentication**: JWT (JSON Web Tokens), Google OAuth 2.0, Passport.js
 - **AI Services**: Google Gemini API (`@google/generative-ai`)
-- **Deployment Platforms**: Vercel (Frontend & Serverless API), Render (Backend Service)
+- **Deployment Platforms**: Vercel (Frontend & Serverless Functions)
 
 ## Tech Stack
 
@@ -441,10 +441,10 @@ FRONTEND_URL=http://localhost:5173
 
 ## Known Limitations (Free Tier)
 
-- **Render Free Tier Spin-Down**: Render backend instances automatically spin down after a period of inactivity; the first request after an idle period may take 30–60 seconds to respond.
-- **Cold Start Delay**: Initial serverless / free instance warming up can introduce temporary latency on cold starts.
-- **AI API Availability & Quotas**: AI features (Trip Planner, Review Replies, Concierge Chatbot) depend on Google Gemini API uptime and rate limits.
-- **Resource Constraints**: Free hosting tiers (Vercel, Render, MongoDB Atlas M0) impose limits on memory, CPU, and maximum concurrent connections.
+- **Serverless Cold Starts**: Initial requests to Vercel Serverless Functions after inactivity may experience a slight cold start delay.
+- **Serverless Execution Timeouts**: Vercel free tier serverless function invocations have execution time limits per request.
+- **MongoDB Atlas Free Tier (M0)**: Shared database cluster has connection pool and storage limits under heavy traffic.
+- **AI API Quotas & Availability**: AI features (Trip Planner, Review Replies, Concierge Chatbot) depend on Google Gemini API availability and quota limits.
 
 ---
 
