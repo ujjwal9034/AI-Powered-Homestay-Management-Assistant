@@ -10,10 +10,20 @@ const path = require('path');
 const fs = require('fs');
 const { protect } = require('../middleware/auth');
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure uploads directory exists (use /tmp in serverless environments)
+const localUploadDir = path.join(__dirname, '..', 'uploads');
+let uploadDir;
+try {
+  if (!fs.existsSync(localUploadDir)) {
+    fs.mkdirSync(localUploadDir, { recursive: true });
+  }
+  uploadDir = localUploadDir;
+} catch {
+  // Serverless environment (read-only filesystem) — use /tmp
+  uploadDir = '/tmp/uploads';
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 }
 
 // Setup storage engine

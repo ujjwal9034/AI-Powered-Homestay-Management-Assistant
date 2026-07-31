@@ -146,4 +146,11 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start the server when this file is run directly (not when imported)
+if (require.main === module) {
+  startServer();
+}
+
+// Export for Vercel serverless adapter
+module.exports = app;
+

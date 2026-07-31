@@ -58,7 +58,7 @@ export const updateProfile = async (profileData) => {
 };
 
 export const getGoogleAuthUrl = () => {
-  const baseUrl = API_BASE_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
+  const baseUrl = API_BASE_URL || window.location.origin;
   return `${baseUrl}/api/auth/google`;
 };
 
@@ -232,7 +232,7 @@ export const uploadImage = async (formData) => {
 export const resolveImageUrl = (url) => {
   if (!url) return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
   return `${apiBase}${url}`;
 };
 
