@@ -25,7 +25,7 @@ const navLinks = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/explore', label: 'Explore', icon: Compass },
   { to: '/about', label: 'About', icon: Info },
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, requiresAuth: true },
 ]
 
 export default function Navbar() {
@@ -34,6 +34,9 @@ export default function Navbar() {
   const { darkMode, toggleDarkMode } = useTheme()
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+
+  // Filter links: Dashboard is only visible when user is logged in
+  const visibleNavLinks = navLinks.filter((link) => !link.requiresAuth || isAuthenticated)
 
   const handleLogout = () => {
     logout()
@@ -55,7 +58,7 @@ export default function Navbar() {
 
         {/* Desktop links */}
         <ul className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ to, label }) => (
+          {visibleNavLinks.map(({ to, label }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -181,7 +184,7 @@ export default function Navbar() {
         }`}
       >
         <div className={`px-4 pb-4 space-y-1 border-t ${darkMode ? 'border-gray-700 bg-dark-900' : 'border-gray-100 bg-white'}`}>
-          {navLinks.map(({ to, label, icon: Icon }) => (
+          {visibleNavLinks.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
