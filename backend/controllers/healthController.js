@@ -9,11 +9,20 @@ const Homestay = require('../models/Homestay');
 const Booking = require('../models/Booking');
 
 const getHealth = (req, res) => {
+  const rawUri = process.env.MONGO_URI || '';
+  const maskedUri = rawUri.replace(/:([^:@]+)@/, ':****@');
   res.status(200).json({
+    status: 'ok',
     success: true,
     message: 'StayWise API is running',
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(process.uptime())}s`,
+    env: {
+      MONGO_URI: maskedUri,
+      VITE_API_URL: process.env.VITE_API_URL || 'NOT_SET',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
+      NODE_ENV: process.env.NODE_ENV || 'NOT_SET'
+    }
   });
 };
 
