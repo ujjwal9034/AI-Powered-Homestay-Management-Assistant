@@ -605,6 +605,7 @@ Configuration is defined in [`vercel.json`](vercel.json).
 ## Weekly Progress
 
 - **Week 2:** Frontend skeleton completed (React + Vite + Tailwind)
+- **Week 3:** Backend initialization and server architecture (Express.js server setup, directory structures, and initial router config)
 - **Week 4:** Backend & API development (Express.js REST API with mock data, frontend integration via Axios)
 - **Week 5:** Database integration (MongoDB Atlas + Mongoose, schema validation, all CRUD endpoints connected to real database)
 - **Week 6:** Authentication system (JWT authentication, Google OAuth 2.0, rate limiting with express-rate-limit, input validation with express-validator, protected routes, Profile page)
