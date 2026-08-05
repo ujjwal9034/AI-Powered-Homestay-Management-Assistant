@@ -59,7 +59,7 @@ export default function Explore() {
   const [search, setSearch] = useState('')
   const [isAiSearch, setIsAiSearch] = useState(false)
   const [aiSearching, setAiSearching] = useState(false)
-  const [aiParsedFilters, setAiParsedFilters] = useState(null)
+  const [aiParsedFilters, setAiParsedFilters] = useState(null) // eslint-disable-line no-unused-vars
   const [sortBy, setSortBy] = useState('rating-desc')
   const [priceRange, setPriceRange] = useState(0) // index into PRICE_RANGES
   const [minRating, setMinRating] = useState(0)

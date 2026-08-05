@@ -24,7 +24,6 @@ import {
   KeyRound,
   CircleCheck,
   CircleX,
-  Globe,
 } from 'lucide-react'
 
 export default function Profile() {

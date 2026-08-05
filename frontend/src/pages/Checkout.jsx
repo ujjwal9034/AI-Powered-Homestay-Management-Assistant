@@ -24,9 +24,7 @@ import {
   MapPin,
   Calendar,
   Users,
-  Check,
   Zap,
-  CheckCircle,
 } from 'lucide-react';
 
 export default function Checkout() {
@@ -60,12 +58,14 @@ export default function Checkout() {
   const [upiId, setUpiId] = useState('');
   const [selectedBank, setSelectedBank] = useState('HDFC Bank');
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!homestayId || !checkIn || !checkOut) {
       setError('Invalid booking parameters. Please select dates from property page.');
       setLoading(false);
       return;
     }
+  /* eslint-enable react-hooks/set-state-in-effect */
 
     const load = async () => {
       try {

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * AuthContext — Provides authentication state across the application.
  *

@@ -17,10 +17,6 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
-  Receipt,
-  Download,
-  Calendar,
-  User,
   MapPin,
   Sparkles,
 } from 'lucide-react';

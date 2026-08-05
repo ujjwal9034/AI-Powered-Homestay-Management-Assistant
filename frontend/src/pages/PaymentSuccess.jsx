@@ -8,7 +8,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { verifyPayment } from '../services/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { CheckCircle2, ShieldCheck, ArrowRight, AlertCircle, Building2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();

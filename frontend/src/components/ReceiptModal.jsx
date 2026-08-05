@@ -4,7 +4,7 @@
  */
 
 import { useTheme } from '../context/ThemeContext';
-import { X, Printer, ShieldCheck, CheckCircle2, MapPin, Calendar, User, Receipt } from 'lucide-react';
+import { X, Printer, ShieldCheck, CheckCircle2, Receipt } from 'lucide-react';
 
 export default function ReceiptModal({ isOpen, onClose, receipt }) {
   const { darkMode } = useTheme();

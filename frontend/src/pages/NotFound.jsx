@@ -4,7 +4,7 @@
  */
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
-import { Home, ArrowLeft, Search, Compass } from 'lucide-react'
+import { Home, Search, Compass } from 'lucide-react'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 
 export default function NotFound() {

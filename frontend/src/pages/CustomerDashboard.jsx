@@ -24,10 +24,6 @@ import {
   MapPin,
   MessageSquare,
   Trash2,
-  AlertTriangle,
-  XCircle,
-  CheckCircle,
-  X,
   Heart,
 } from 'lucide-react'
 
@@ -54,7 +50,7 @@ export default function CustomerDashboard() {
         setSelectedReceipt(res.receipt)
         setIsReceiptModalOpen(true)
       }
-    } catch (err) {
+    } catch (err) { // eslint-disable-line no-unused-vars
       showAction('Failed to load payment receipt', true)
     }
   }

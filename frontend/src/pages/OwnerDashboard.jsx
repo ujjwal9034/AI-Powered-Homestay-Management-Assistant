@@ -15,7 +15,7 @@ import { useToast } from '../context/ToastContext'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
-  const { user } = useAuth()
+  useAuth()
 
   const [homestays, setHomestays] = useState([])
   const [reviews, setReviews] = useState({})
@@ -60,10 +60,6 @@ export default function OwnerDashboard() {
   // Selected homestay for reviews
   const [selectedHomestay, setSelectedHomestay] = useState(null)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const loadData = async () => {
     try {
       setLoading(true)
@@ -102,6 +98,12 @@ export default function OwnerDashboard() {
       setLoading(false)
     }
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    loadData()
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const loadAnalytics = async () => {
     if (analyticsLoading) return
@@ -351,7 +353,7 @@ export default function OwnerDashboard() {
   const totalReviews = Object.values(reviews).flat().length
   const allRevs = Object.values(reviews).flat()
   const avgRating = allRevs.length > 0 ? (allRevs.reduce((s, r) => s + r.rating, 0) / allRevs.length).toFixed(1) : '0.0'
-  const pendingCount = allRevs.filter((r) => r.status === 'pending').length
+  const pendingCount = allRevs.filter((r) => r.status === 'pending').length // eslint-disable-line no-unused-vars
 
   if (loading) {
     return (

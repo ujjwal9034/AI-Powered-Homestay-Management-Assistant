@@ -21,10 +21,6 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const { showToast } = useToast()
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const loadData = async () => {
     try {
       setLoading(true)
@@ -44,6 +40,12 @@ export default function AdminDashboard() {
       setLoading(false)
     }
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    loadData()
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const showAction = (msg, isError = false) => {
     showToast(msg, isError ? 'error' : 'success')

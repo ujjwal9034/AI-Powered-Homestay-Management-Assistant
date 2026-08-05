@@ -9,10 +9,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, createBooking, resolveImageUrl, toggleWishlist, toggleHelpfulVote } from '../services/api'
+import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, resolveImageUrl, toggleWishlist, toggleHelpfulVote } from '../services/api'
 import TripPlannerModal from '../components/TripPlannerModal'
 import PaymentModal from '../components/PaymentModal'
-import EmptyState from '../components/EmptyState'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useToast } from '../context/ToastContext'
 import {
@@ -23,7 +22,6 @@ import {
   Sparkles,
   Share2,
   Check,
-  Wifi,
   Bot,
   Send,
   X,
@@ -32,10 +30,7 @@ import {
   PenLine,
   ArrowUpDown,
   Zap,
-  LogIn,
   CircleAlert,
-  CircleCheck,
-  CircleX,
   Heart,
   ThumbsUp,
   ShieldCheck,
@@ -64,9 +59,9 @@ export default function HomestayDetail() {
   const [bookingCheckIn, setBookingCheckIn] = useState('')
   const [bookingCheckOut, setBookingCheckOut] = useState('')
   const [bookingGuests, setBookingGuests] = useState(1)
-  const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingLoading, setBookingLoading] = useState(false) // eslint-disable-line no-unused-vars
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
-  const [paymentBookingData, setPaymentBookingData] = useState(null)
+  const [paymentBookingData, setPaymentBookingData] = useState(null) // eslint-disable-line no-unused-vars
 
   // Chat states
   const [chatMessages, setChatMessages] = useState([
@@ -93,16 +88,18 @@ export default function HomestayDetail() {
       setHomestay(result.data)
       setReviews(result.data.reviews || [])
       setError(null)
-    } catch (err) {
+    } catch {
       setError('Failed to load homestay details. It might have been deleted.')
     } finally {
       setLoading(false)
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     loadHomestay()
   }, [id])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const showAction = (msg, isError = false) => {
     showToast(msg, isError ? 'error' : 'success')
@@ -113,7 +110,7 @@ export default function HomestayDetail() {
     if (!text.trim()) return
     setFormLoading(true)
     try {
-      const res = await createReview({
+      await createReview({
         homestayId: id,
         rating,
         text: text.trim(),
@@ -163,7 +160,7 @@ export default function HomestayDetail() {
           )
         )
       }
-    } catch (err) {
+    } catch {
       showAction('Failed to update vote', true)
     }
   }
@@ -206,7 +203,7 @@ export default function HomestayDetail() {
     navigate(`/checkout?homestayId=${id}&checkIn=${bookingCheckIn}&checkOut=${bookingCheckOut}&guestsCount=${bookingGuests}`)
   }
 
-  const handlePaymentSuccess = (confirmedBooking) => {
+  const handlePaymentSuccess = () => {
     setIsPaymentModalOpen(false)
     showAction('Payment Verified & Booking Confirmed!')
     setTimeout(() => {

@@ -21,7 +21,6 @@ import {
   ArrowRight,
   MapPin,
   Quote,
-  TrendingUp,
   Building2,
   CalendarCheck,
 } from 'lucide-react'
