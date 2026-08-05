@@ -92,6 +92,13 @@ const createHomestay = async (req, res) => {
   try {
     const { name, location, description, amenities, pricePerNight, image } = req.body;
 
+    if (req.user.role === 'owner' && req.user.ownerStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your host account has not been approved by platform administrators yet. Please submit your identity verification documents and wait for approval.',
+      });
+    }
+
     if (!name || !location) {
       return res.status(400).json({ success: false, message: 'Name and location are required' });
     }

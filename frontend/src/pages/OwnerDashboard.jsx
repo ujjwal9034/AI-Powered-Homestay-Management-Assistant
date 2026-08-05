@@ -9,14 +9,15 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl, releaseBookingEscrow } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl, releaseBookingEscrow, submitOwnerKYC } from '../services/api'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
 import AnalyticsChart from '../components/ui/AnalyticsChart'
+import { Upload, ShieldCheck, AlertCircle, Clock, Lock, FileText, CheckCircle2 } from 'lucide-react'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
-  useAuth()
+  const { user, updateUser } = useAuth()
 
   const [homestays, setHomestays] = useState([])
   const [reviews, setReviews] = useState({})
@@ -30,6 +31,11 @@ export default function OwnerDashboard() {
   // AI Description states
   const [aiKeywords, setAiKeywords] = useState('')
   const [enhancingDescription, setEnhancingDescription] = useState(false)
+
+  // Host KYC Verification states
+  const [kycDoc, setKycDoc] = useState(user?.kycDocument || '')
+  const [kycUploading, setKycUploading] = useState(false)
+  const [submittingKyc, setSubmittingKyc] = useState(false)
 
   // Add/edit homestay modal
   const [showModal, setShowModal] = useState(false)
@@ -265,6 +271,43 @@ export default function OwnerDashboard() {
     }
   }
 
+  const handleKycUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    setKycUploading(true)
+    try {
+      const res = await uploadImage(formData)
+      setKycDoc(res.url)
+      showToast('Verification document uploaded successfully!')
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to upload document', 'error')
+    } finally {
+      setKycUploading(false)
+    }
+  }
+
+  const handleKycSubmit = async (e) => {
+    e.preventDefault()
+    if (!kycDoc) return
+
+    setSubmittingKyc(true)
+    try {
+      const res = await submitOwnerKYC(kycDoc)
+      if (res.success) {
+        updateUser({ ownerStatus: 'pending_approval', kycDocument: kycDoc })
+        showToast('Verification request submitted successfully!')
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to submit verification request', 'error')
+    } finally {
+      setSubmittingKyc(false)
+    }
+  }
+
   const handleGetPriceRecommendation = async () => {
     if (!priceAdvisorHomestay) return
     setGettingRecommendation(true)
@@ -398,44 +441,198 @@ export default function OwnerDashboard() {
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
               🏠 Property Owner
             </span>
-            <button onClick={openAddModal} className="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md shadow-primary-500/20 hover:shadow-primary-500/40 hover:scale-105 active:scale-95">
-              + Add Homestay
-            </button>
+            {user?.ownerStatus === 'approved' && (
+              <button onClick={openAddModal} className="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md shadow-primary-500/20 hover:shadow-primary-500/40 hover:scale-105 active:scale-95">
+                + Add Homestay
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'My Properties', value: homestays.length, icon: '🏡' },
-            { label: 'Total Bookings', value: bookings.length, icon: '📅' },
-            { label: 'Total Reviews', value: totalReviews, icon: '⭐' },
-            { label: 'Avg Rating', value: avgRating, icon: '📊' },
-          ].map(({ label, value, icon }) => (
-            <div key={label} className={`rounded-2xl border p-5 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
-              <span className="text-2xl">{icon}</span>
-              <div className={`text-2xl font-heading font-bold mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{value}</div>
-              <div className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
-            </div>
-          ))}
-        </div>
+        {user?.ownerStatus !== 'approved' ? (
+          <div className="max-w-3xl mx-auto mt-4">
+            <div className={`rounded-3xl border p-8 shadow-xl ${darkMode ? 'border-gray-800 bg-dark-800/80 backdrop-blur-md' : 'border-gray-200 bg-white/80 backdrop-blur-md'}`}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 rounded-2xl bg-primary-500/10 text-primary-500">
+                  <ShieldCheck className="w-8 h-8 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className={`text-xl sm:text-2xl font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Host Verification Required
+                  </h2>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Secure and trusted homestay hosting
+                  </p>
+                </div>
+              </div>
 
-        {/* Tabs */}
-        <div className={`flex gap-1 p-1 rounded-xl mb-8 w-fit ${darkMode ? 'bg-dark-800' : 'bg-gray-100'}`}>
-          {[
-            { id: 'properties', label: '🏡 My Properties' },
-            { id: 'bookings', label: '📅 Bookings' },
-            { id: 'reviews', label: '💬 Guest Reviews' },
-            { id: 'analytics', label: '📊 Analytics' },
-          ].map(({ id, label }) => (
-            <button key={id} onClick={() => handleTabChange(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+              {/* Status Alert Boards */}
+              {user?.ownerStatus === 'pending_approval' && (
+                <div className="mb-6 p-5 rounded-2xl border border-blue-500/20 bg-blue-500/5 text-blue-500 flex gap-4">
+                  <Clock className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-semibold text-sm">Under Administrative Review</div>
+                    <div className={`text-xs leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Your identity document has been submitted. Platform administrators will check details against public records and activate your hosting profile within 24 hours.
+                    </div>
+                    {user?.kycDocument && (
+                      <div className="pt-2">
+                        <a
+                          href={resolveImageUrl(user.kycDocument)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-500 hover:underline"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> View Submitted Document
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {user?.ownerStatus === 'rejected' && (
+                <div className="mb-6 p-5 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-500 flex gap-4">
+                  <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-semibold text-sm">KYC Document Rejected</div>
+                    <div className={`text-xs leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      The document you uploaded previously could not be verified (either blurred or details mismatched). Please upload a high-resolution government identity document to submit again.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {user?.ownerStatus === 'suspended' && (
+                <div className="mb-6 p-5 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-amber-600 flex gap-4">
+                  <Lock className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-semibold text-sm">Account Temporarily Suspended</div>
+                    <div className={`text-xs leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Your hosting access has been suspended by the compliance team. You cannot list new homestays or manage bookings. Please check your email inbox or contact staywise-support@staywise.com for help.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Wizard Form */}
+              {(user?.ownerStatus === 'none' || user?.ownerStatus === 'rejected') && (
+                <form onSubmit={handleKycSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      Upload Government-Issued ID Scan (Aadhaar / Passport / License)
+                    </label>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Make sure the scan or photograph is clearly readable and shows your full name and photo.
+                    </p>
+
+                    <div className="relative mt-2">
+                      {kycDoc ? (
+                        <div className={`rounded-2xl border p-4 flex items-center justify-between gap-4 ${darkMode ? 'bg-dark-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 flex-shrink-0">
+                              <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div className="truncate">
+                              <div className={`text-xs font-semibold truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                ID_Verification_Document.jpg
+                              </div>
+                              <a
+                                href={resolveImageUrl(kycDoc)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-primary-500 hover:underline"
+                              >
+                                Preview Uploaded Image
+                              </a>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setKycDoc('')}
+                            className="text-xs font-semibold text-red-500 hover:underline cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all hover:border-primary-500 ${
+                          darkMode ? 'border-gray-700 hover:bg-dark-900/40' : 'border-gray-300 hover:bg-gray-50'
+                        }`}>
+                          <Upload className={`w-8 h-8 mb-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <span className={`text-sm font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {kycUploading ? 'Uploading file...' : 'Click to select and upload document'}
+                          </span>
+                          <span className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            Supports JPG, PNG, PDF (Max 5MB)
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={handleKycUpload}
+                            disabled={kycUploading}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!kycDoc || submittingKyc}
+                    className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
+                      !kycDoc || submittingKyc
+                        ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 dark:text-gray-600 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-primary-500/20 hover:scale-[1.01] active:scale-[0.99]'
+                    }`}
+                  >
+                    {submittingKyc ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      'Submit Identity For Verification'
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'My Properties', value: homestays.length, icon: '🏡' },
+                { label: 'Total Bookings', value: bookings.length, icon: '📅' },
+                { label: 'Total Reviews', value: totalReviews, icon: '⭐' },
+                { label: 'Avg Rating', value: avgRating, icon: '📊' },
+              ].map(({ label, value, icon }) => (
+                <div key={label} className={`rounded-2xl border p-5 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+                  <span className="text-2xl">{icon}</span>
+                  <div className={`text-2xl font-heading font-bold mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{value}</div>
+                  <div className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabs */}
+            <div className={`flex gap-1 p-1 rounded-xl mb-8 w-fit ${darkMode ? 'bg-dark-800' : 'bg-gray-100'}`}>
+              {[
+                { id: 'properties', label: '🏡 My Properties' },
+                { id: 'bookings', label: '📅 Bookings' },
+                { id: 'reviews', label: '💬 Guest Reviews' },
+                { id: 'analytics', label: '📊 Analytics' },
+              ].map(({ id, label }) => (
+                <button key={id} onClick={() => handleTabChange(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Properties Tab */}
-        {activeTab === 'properties' && (
+        {user?.ownerStatus === 'approved' && activeTab === 'properties' && (
           <div className="grid sm:grid-cols-2 gap-6">
             {homestays.map((h) => (
               <div key={h._id} className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>

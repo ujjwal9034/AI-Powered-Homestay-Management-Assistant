@@ -148,4 +148,72 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getAdminStats, getAllUsers, updateUserRole, deleteUser };
+/**
+ * PATCH /api/admin/users/:id/ban
+ * Admin only — Toggle a user's isBanned status.
+ */
+const toggleUserBan = async (req, res) => {
+  try {
+    const { isBanned } = req.body;
+    if (isBanned === undefined) {
+      return res.status(400).json({ success: false, message: 'isBanned status is required' });
+    }
+
+    if (req.params.id === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot ban yourself' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.isBanned = isBanned;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User account has been successfully ${isBanned ? 'banned' : 'unbanned'}.`,
+      data: user,
+    });
+  } catch (error) {
+    console.error('[toggleUserBan] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update user ban status', error: error.message });
+  }
+};
+
+/**
+ * PATCH /api/admin/users/:id/verify-owner
+ * Admin only — Approve or reject an owner's KYC status.
+ */
+const verifyOwnerStatus = async (req, res) => {
+  try {
+    const { ownerStatus } = req.body;
+    if (!ownerStatus || !['approved', 'rejected', 'suspended'].includes(ownerStatus)) {
+      return res.status(400).json({ success: false, message: 'Valid ownerStatus is required (approved, rejected, suspended)' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role !== 'owner') {
+      return res.status(400).json({ success: false, message: 'KYC status can only be set for owners' });
+    }
+
+    user.ownerStatus = ownerStatus;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Owner account has been successfully ${ownerStatus}.`,
+      data: user,
+    });
+  } catch (error) {
+    console.error('[verifyOwnerStatus] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update owner verification status', error: error.message });
+  }
+};
+
+module.exports = { getAdminStats, getAllUsers, updateUserRole, deleteUser, toggleUserBan, verifyOwnerStatus };

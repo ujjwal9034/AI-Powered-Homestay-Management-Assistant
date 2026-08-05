@@ -198,6 +198,21 @@ export const releaseBookingEscrow = async (bookingId) => {
   return response.data;
 };
 
+export const submitOwnerKYC = async (kycDocument) => {
+  const response = await api.post('/api/auth/verify-owner', { kycDocument });
+  return response.data;
+};
+
+export const adminToggleUserBan = async (userId, isBanned) => {
+  const response = await api.patch(`/api/admin/users/${userId}/ban`, { isBanned });
+  return response.data;
+};
+
+export const adminVerifyOwner = async (userId, ownerStatus) => {
+  const response = await api.patch(`/api/admin/users/${userId}/verify-owner`, { ownerStatus });
+  return response.data;
+};
+
 // Booking APIs
 export const createBooking = async (data) => {
   const response = await api.post('/api/bookings', data);

@@ -35,6 +35,13 @@ const protect = async (req, res, next) => {
       });
     }
 
+    if (req.user.isBanned) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been permanently suspended for violating StayWise guidelines.',
+      });
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({

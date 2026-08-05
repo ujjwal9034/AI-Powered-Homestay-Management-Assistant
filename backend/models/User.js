@@ -50,6 +50,19 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    ownerStatus: {
+      type: String,
+      enum: ['none', 'pending_approval', 'approved', 'rejected', 'suspended'],
+      default: 'none',
+    },
+    kycDocument: {
+      type: String,
+      default: null,
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,

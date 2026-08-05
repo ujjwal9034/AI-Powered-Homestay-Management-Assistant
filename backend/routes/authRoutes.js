@@ -8,7 +8,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
-const { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist } = require('../controllers/authController');
+const { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { registerValidation, loginValidation, validate } = require('../middleware/validators');
@@ -21,6 +21,7 @@ router.post('/login', authLimiter, loginValidation, validate, login);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.post('/verify-owner', protect, requestOwnerVerification);
 router.get('/wishlist', protect, getWishlist);
 router.post('/wishlist/:homestayId', protect, toggleWishlist);
 

@@ -7,9 +7,10 @@
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
-import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays } from '../services/api'
+import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays, adminToggleUserBan, adminVerifyOwner, resolveImageUrl } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import AnalyticsChart from '../components/ui/AnalyticsChart'
+import { Check, X, Ban, Unlock, Eye } from 'lucide-react'
 
 export default function AdminDashboard() {
   const { darkMode } = useTheme()
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
   const [homestays, setHomestays] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const [selectedKycUser, setSelectedKycUser] = useState(null)
   const { showToast } = useToast()
 
   const loadData = async () => {
@@ -70,6 +72,27 @@ export default function AdminDashboard() {
       loadData()
     } catch (err) {
       showAction(err.response?.data?.message || 'Failed to delete user', true)
+    }
+  }
+
+  const handleToggleBan = async (userId, isBanned) => {
+    try {
+      await adminToggleUserBan(userId, isBanned)
+      showAction(`User account successfully ${isBanned ? 'banned' : 'unbanned'}`)
+      loadData()
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to update ban status', true)
+    }
+  }
+
+  const handleVerifyOwner = async (userId, status) => {
+    try {
+      await adminVerifyOwner(userId, status)
+      showAction(`Owner account verification status set to '${status}'`)
+      setSelectedKycUser(null)
+      loadData()
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to verify host', true)
     }
   }
 
@@ -201,22 +224,69 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{u.email}</td>
-                      <td className="px-6 py-4">{roleBadge(u.role)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          {roleBadge(u.role)}
+                          {u.isBanned && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20">
+                              🚫 Banned
+                            </span>
+                          )}
+                          {!u.isBanned && u.role === 'owner' && (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                              u.ownerStatus === 'approved'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                : u.ownerStatus === 'pending_approval'
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                                : u.ownerStatus === 'rejected'
+                                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                            }`}>
+                              🛡️ KYC: {u.ownerStatus || 'none'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className={`px-6 py-4 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                         {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <select
                             value={u.role}
                             onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                            className={`text-xs rounded-lg px-2 py-1 border cursor-pointer ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-300' : 'bg-white border-gray-200 text-gray-700'}`}
+                            className={`text-xs rounded-lg px-2 py-1.5 border cursor-pointer focus:outline-none ${darkMode ? 'bg-dark-900 border-gray-600 text-gray-300' : 'bg-white border-gray-200 text-gray-700'}`}
                           >
                             <option value="customer">Customer</option>
                             <option value="owner">Owner</option>
                             <option value="admin">Admin</option>
                           </select>
-                          <button onClick={() => handleDeleteUser(u._id, u.name)} className={`text-xs px-2 py-1 rounded-lg cursor-pointer ${darkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-500 hover:bg-red-50'}`}>
+
+                          {/* Ban/Unban Button */}
+                          <button
+                            onClick={() => handleToggleBan(u._id, !u.isBanned)}
+                            title={u.isBanned ? 'Unban User' : 'Ban User'}
+                            className={`p-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
+                              u.isBanned
+                                ? 'border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20'
+                                : 'border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800/35 dark:text-amber-400 dark:hover:bg-amber-950/20'
+                            }`}
+                          >
+                            {u.isBanned ? <Unlock className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                          </button>
+
+                          {/* Verify KYC Button (only if owner and has document) */}
+                          {u.role === 'owner' && u.kycDocument && (
+                            <button
+                              onClick={() => setSelectedKycUser(u)}
+                              title="Review Host KYC"
+                              className="p-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-blue-200 text-blue-500 hover:bg-blue-50 dark:border-blue-800/35 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <button onClick={() => handleDeleteUser(u._id, u.name)} className={`text-xs px-2 py-1.5 rounded-lg border border-red-105 text-red-500 hover:bg-red-50 dark:border-red-800/25 dark:text-red-400 dark:hover:bg-red-950/25 cursor-pointer`}>
                             🗑
                           </button>
                         </div>
@@ -293,6 +363,80 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* KYC Review Modal */}
+        {selectedKycUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className={`w-full max-w-2xl rounded-3xl border overflow-hidden shadow-2xl ${
+              darkMode ? 'bg-dark-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className={`p-6 border-b flex justify-between items-center ${
+                darkMode ? 'border-gray-700 bg-dark-900' : 'border-gray-100 bg-gray-50'
+              }`}>
+                <div>
+                  <h3 className={`text-lg font-heading font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Review Identity Verification Request
+                  </h3>
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Check the uploaded document scans for host {selectedKycUser.name} ({selectedKycUser.email})
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedKycUser(null)}
+                  className={`p-1.5 rounded-lg border hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    darkMode ? 'border-gray-750 text-gray-400' : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Government ID Document Preview
+                  </span>
+                  <div className={`rounded-2xl border overflow-hidden flex items-center justify-center p-4 bg-black/10 min-h-[300px] max-h-[400px] ${
+                    darkMode ? 'border-gray-700' : 'border-gray-200'
+                  }`}>
+                    <img
+                      src={resolveImageUrl(selectedKycUser.kycDocument)}
+                      alt="Verification ID Document"
+                      className="max-h-[350px] object-contain rounded-lg shadow-sm"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <button
+                    onClick={() => handleVerifyOwner(selectedKycUser._id, 'approved')}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 cursor-pointer bg-emerald-550 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  >
+                    <Check className="w-4 h-4" /> Approve Host
+                  </button>
+                  <button
+                    onClick={() => handleVerifyOwner(selectedKycUser._id, 'rejected')}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 cursor-pointer bg-rose-550 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20"
+                  >
+                    <X className="w-4 h-4" /> Reject ID
+                  </button>
+                  <button
+                    onClick={() => handleVerifyOwner(selectedKycUser._id, 'suspended')}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 cursor-pointer border hover:bg-amber-50 dark:hover:bg-amber-950/20 ${
+                      darkMode ? 'border-amber-800/35 text-amber-400' : 'border-amber-200 text-amber-600'
+                    }`}
+                  >
+                    <Ban className="w-4 h-4" /> Suspend Account
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

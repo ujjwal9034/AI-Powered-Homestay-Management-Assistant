@@ -40,7 +40,13 @@ const register = async (req, res) => {
     const validRole = ['customer', 'owner'].includes(role) ? role : 'customer';
 
     // Create user (password is hashed automatically by pre-save hook)
-    const user = await User.create({ name, email, password, role: validRole });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: validRole,
+      ownerStatus: validRole === 'owner' ? 'pending_approval' : 'none',
+    });
 
     // Generate JWT token
     const token = generateToken(user._id);
@@ -53,6 +59,9 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        ownerStatus: user.ownerStatus,
+        kycDocument: user.kycDocument,
+        isBanned: user.isBanned,
         token,
       },
     });
@@ -123,6 +132,9 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         avatar: user.avatar,
+        ownerStatus: user.ownerStatus,
+        kycDocument: user.kycDocument,
+        isBanned: user.isBanned,
         token,
       },
     });
@@ -166,6 +178,9 @@ const getMe = async (req, res) => {
         phone: user.phone,
         googleId: user.googleId ? true : false,
         wishlist: user.wishlist || [],
+        ownerStatus: user.ownerStatus,
+        kycDocument: user.kycDocument,
+        isBanned: user.isBanned,
         createdAt: user.createdAt,
       },
     });
@@ -306,6 +321,41 @@ const toggleWishlist = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist };
+/**
+ * POST /api/auth/verify-owner
+ * Protected — Host submits government ID document and requests verification.
+ */
+const requestOwnerVerification = async (req, res) => {
+  try {
+    const { kycDocument } = req.body;
+    if (!kycDocument) {
+      return res.status(400).json({ success: false, message: 'KYC Document path/URL is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.kycDocument = kycDocument;
+    user.ownerStatus = 'pending_approval';
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'KYC Document submitted successfully! Verification is pending administrator approval.',
+      data: {
+        _id: user._id,
+        ownerStatus: user.ownerStatus,
+        kycDocument: user.kycDocument,
+      },
+    });
+  } catch (error) {
+    console.error('[requestOwnerVerification] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to submit KYC verification details', error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification };
 
 

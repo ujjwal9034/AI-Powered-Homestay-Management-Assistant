@@ -12,6 +12,8 @@ const {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  toggleUserBan,
+  verifyOwnerStatus,
 } = require('../controllers/adminController');
 
 // All admin routes require authentication + admin role
@@ -21,5 +23,7 @@ router.get('/stats', getAdminStats);
 router.get('/users', getAllUsers);
 router.patch('/users/:id', updateUserRole);
 router.delete('/users/:id', deleteUser);
+router.patch('/users/:id/ban', toggleUserBan);
+router.patch('/users/:id/verify-owner', verifyOwnerStatus);
 
 module.exports = router;
