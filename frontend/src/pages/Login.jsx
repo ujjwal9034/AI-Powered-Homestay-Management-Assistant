@@ -202,9 +202,9 @@ export default function Login() {
                   />
                   <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Remember me</span>
                 </label>
-                <button type="button" className="text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer">
+                <Link to="/forgot-password" className="text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer">
                   Forgot password?
-                </button>
+                </Link>
               </div>
             )}
 

@@ -8,6 +8,7 @@
 
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const crypto = require('crypto');
 
 /**
  * Generate a JWT token for a user
@@ -356,6 +357,87 @@ const requestOwnerVerification = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification };
+/**
+ * POST /api/auth/forgot-password
+ * Public — Requests a password reset link.
+ */
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email address is required' });
+    }
+
+    const user = await User.findOne({ email });
+    // Secure design pattern: don't reveal if email exists
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset link has been dispatched.',
+      });
+    }
+
+    // Generate raw random reset token
+    const rawToken = crypto.randomBytes(20).toString('hex');
+
+    // Hash token and set user fields
+    user.resetPasswordToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins expiry
+    await user.save();
+
+    const resetUrl = `http://localhost:5173/reset-password/${rawToken}`;
+    console.log(`\n🔑 [PASSWORD RESET LINK REQUESTED]:\nURL: ${resetUrl}\nExpires: 15 minutes\n`);
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account exists with this email, a password reset link has been dispatched.',
+      devToken: rawToken, // For sandbox testing convenience
+    });
+  } catch (error) {
+    console.error('[forgotPassword] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to request password reset', error: error.message });
+  }
+};
+
+/**
+ * POST /api/auth/reset-password/:token
+ * Public — Resets user password using reset token.
+ */
+const resetPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    // Hash the raw token to compare it
+    const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired password reset token' });
+    }
+
+    // Set new password
+    user.password = password;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successful! You can now log in with your new password.',
+    });
+  } catch (error) {
+    console.error('[resetPassword] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to reset password', error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification, forgotPassword, resetPassword };
 
 

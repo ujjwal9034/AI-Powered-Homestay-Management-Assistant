@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchHomestayById, createPaymentSession, verifyPayment, resolveImageUrl } from '../services/api';
+import { fetchHomestayById, createPaymentSession, verifyPayment, resolveImageUrl, validateCouponCode } from '../services/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useToast } from '../context/ToastContext';
 import DateRangePicker from '../components/ui/DateRangePicker';
@@ -52,6 +52,10 @@ export default function Checkout() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState(null); // 'connecting' | 'authorizing' | 'success'
   const [paymentType, setPaymentType] = useState('full'); // 'full' | 'deposit'
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discountPercent }
+  const [couponError, setCouponError] = useState('');
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   // Card Form Inputs
   const [cardName, setCardName] = useState('');
@@ -115,9 +119,12 @@ export default function Checkout() {
     ? Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)))
     : 0;
   const basePrice = diffDays * (homestay?.pricePerNight || 0);
-  const serviceFee = Math.round(basePrice * 0.05);
-  const tax = Math.round(basePrice * 0.12);
-  const totalPrice = basePrice + serviceFee + tax;
+  const discountPercent = appliedCoupon ? appliedCoupon.discountPercent : 0;
+  const discountAmount = Math.round(basePrice * (discountPercent / 100));
+  const basePriceAfterDiscount = basePrice - discountAmount;
+  const serviceFee = Math.round(basePriceAfterDiscount * 0.05);
+  const tax = Math.round(basePriceAfterDiscount * 0.12);
+  const totalPrice = basePriceAfterDiscount + serviceFee + tax;
 
   const handleFillTestCard = () => {
     setCardName(user?.name || 'Guest User');
@@ -156,6 +163,7 @@ export default function Checkout() {
         guestsCount,
         paymentMethod,
         paymentType,
+        promoCode: appliedCoupon?.code,
       });
 
       // If real Stripe URL is returned, redirect to Stripe Hosted Page
@@ -177,6 +185,7 @@ export default function Checkout() {
         sessionId: sessionRes.sessionId,
         paymentId: `PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
         paymentType,
+        promoCode: appliedCoupon?.code,
       });
 
       if (res.success) {
@@ -577,6 +586,76 @@ export default function Checkout() {
                   <span>Occupancy Taxes (12%)</span>
                   <span className="font-semibold text-gray-900 dark:text-white">₹{tax.toLocaleString()}</span>
                 </div>
+
+                {/* Coupon Code Input */}
+                <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                    Have a Promo Code?
+                  </label>
+                  {appliedCoupon ? (
+                    <div className="flex justify-between items-center bg-emerald-500/10 text-emerald-500 font-semibold p-2.5 rounded-xl border border-emerald-500/20 text-xs">
+                      <span>🏷️ Applied: {appliedCoupon.code} (-{appliedCoupon.discountPercent}%)</span>
+                      <button
+                        type="button"
+                        onClick={() => setAppliedCoupon(null)}
+                        className="text-red-500 font-bold hover:underline cursor-pointer ml-2 text-[10px]"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. WELCOME10"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value);
+                          setCouponError('');
+                        }}
+                        className={`flex-1 rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-1 ${
+                          darkMode
+                            ? 'bg-dark-900 border-gray-700 text-gray-100 focus:ring-primary-500'
+                            : 'bg-white border-gray-200 text-gray-900 focus:ring-primary-500'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        disabled={applyingCoupon || !couponCode.trim()}
+                        onClick={async () => {
+                          setApplyingCoupon(true);
+                          setCouponError('');
+                          try {
+                            const res = await validateCouponCode(couponCode);
+                            if (res.success) {
+                              setAppliedCoupon(res.data);
+                              setCouponCode('');
+                              showToast(res.message, 'success');
+                            }
+                          } catch (err) {
+                            setCouponError(err.response?.data?.message || 'Invalid code');
+                          } finally {
+                            setApplyingCoupon(false);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 active:scale-95 text-white font-semibold text-xs cursor-pointer disabled:opacity-50 transition-all"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+                  {couponError && (
+                    <p className="text-[10px] text-red-500 font-semibold mt-1">⚠️ {couponError}</p>
+                  )}
+                </div>
+
+                {appliedCoupon && (
+                  <div className="flex justify-between text-emerald-500 font-semibold pt-1">
+                    <span>Coupon Discount</span>
+                    <span>-₹{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between pt-3 border-t border-gray-200 dark:border-gray-700 font-heading font-bold text-base">
                   <span className="text-gray-900 dark:text-white">Total Amount</span>
                   <span className="text-primary-500">₹{totalPrice.toLocaleString()}</span>

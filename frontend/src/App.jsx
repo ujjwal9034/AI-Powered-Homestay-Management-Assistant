@@ -17,6 +17,9 @@ import About from './pages/About'
 import Explore from './pages/Explore'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import Inbox from './pages/Inbox'
 import Profile from './pages/Profile'
 import OAuthCallback from './pages/OAuthCallback'
 import HomestayDetail from './pages/HomestayDetail'
@@ -45,6 +48,8 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route path="/homestays/:id" element={<HomestayDetail />} />
             <Route
@@ -68,6 +73,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inbox"
+              element={
+                <ProtectedRoute>
+                  <Inbox />
                 </ProtectedRoute>
               }
             />

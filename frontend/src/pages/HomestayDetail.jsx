@@ -381,10 +381,25 @@ export default function HomestayDetail() {
               <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {homestay.totalReviews} reviews on this property
               </span>
-              <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/20 text-primary-500 font-medium flex items-center gap-1.5">
-                <User className="w-3 h-3" />
-                Hosted by {homestay.owner?.name}
-              </span>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-500/20 text-primary-500 font-medium flex items-center gap-1.5">
+                  <User className="w-3 h-3" />
+                  Hosted by {homestay.owner?.name}
+                </span>
+                {isAuthenticated && user?._id !== homestay.owner?._id && (
+                  <button
+                    onClick={() => {
+                      navigate('/inbox', {
+                        state: { startChatWith: homestay.owner }
+                      })
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-full bg-primary-500 hover:bg-primary-600 text-white font-medium flex items-center gap-1.5 cursor-pointer transition-colors active:scale-95 shadow-sm"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    Chat with Host
+                  </button>
+                )}
+              </div>
             </div>
 
             <h3 className={`font-heading font-semibold text-lg mt-6 mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>

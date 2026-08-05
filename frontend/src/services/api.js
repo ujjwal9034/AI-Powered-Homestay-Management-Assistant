@@ -218,6 +218,46 @@ export const fetchAdminAuditLogs = async () => {
   return response.data;
 };
 
+export const fetchNotifications = async () => {
+  const response = await api.get('/api/notifications');
+  return response.data;
+};
+
+export const markNotificationAsRead = async (id) => {
+  const response = await api.patch(`/api/notifications/${id}/read`);
+  return response.data;
+};
+
+export const fetchChatContacts = async () => {
+  const response = await api.get('/api/messages/contacts');
+  return response.data;
+};
+
+export const fetchMessagesWithUser = async (userId) => {
+  const response = await api.get(`/api/messages/${userId}`);
+  return response.data;
+};
+
+export const sendPrivateMessage = async (recipientId, text) => {
+  const response = await api.post('/api/messages', { recipientId, text });
+  return response.data;
+};
+
+export const validateCouponCode = async (code) => {
+  const response = await api.post('/api/coupons/validate', { code });
+  return response.data;
+};
+
+export const forgotPassword = async (email) => {
+  const response = await api.post('/api/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (token, password) => {
+  const response = await api.post(`/api/auth/reset-password/${token}`, { password });
+  return response.data;
+};
+
 // Booking APIs
 export const createBooking = async (data) => {
   const response = await api.post('/api/bookings', data);

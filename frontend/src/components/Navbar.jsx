@@ -3,10 +3,11 @@
  * Shows Sign In when logged out, and user avatar + Logout when logged in.
  * Includes Explore link for public browsing.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { fetchNotifications, markNotificationAsRead } from '../services/api'
 import {
   Sun,
   Moon,
@@ -19,6 +20,8 @@ import {
   LogOut,
   User,
   ChevronDown,
+  Bell,
+  MessageSquare,
 } from 'lucide-react'
 
 const navLinks = [
@@ -26,14 +29,51 @@ const navLinks = [
   { to: '/explore', label: 'Explore', icon: Compass },
   { to: '/about', label: 'About', icon: Info },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, requiresAuth: true },
+  { to: '/inbox', label: 'Inbox', icon: MessageSquare, requiresAuth: true },
 ]
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
   const { darkMode, toggleDarkMode } = useTheme()
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+
+  const loadNotifications = async () => {
+    try {
+      const res = await fetchNotifications()
+      if (res.success) {
+        setNotifications(res.data || [])
+      }
+    } catch (err) {
+      console.warn('Failed to load notifications:', err.message)
+    }
+  }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadNotifications()
+      const timer = setInterval(loadNotifications, 45000)
+      return () => clearInterval(timer)
+    }
+  }, [isAuthenticated])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleMarkRead = async (id) => {
+    try {
+      await markNotificationAsRead(id)
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      )
+    } catch (err) {
+      console.warn('Failed to mark notification read:', err.message)
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length
 
   // Filter links: Dashboard is only visible when user is logged in
   const visibleNavLinks = navLinks.filter((link) => !link.requiresAuth || isAuthenticated)
@@ -92,6 +132,82 @@ export default function Navbar() {
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+
+          {/* Notification Bell (only if logged in) */}
+          {isAuthenticated && (
+            <div className="relative">
+              <button
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className={`p-2 rounded-lg transition-colors cursor-pointer relative ${
+                  darkMode ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown Panel */}
+              {notificationsOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
+                  <div className={`absolute right-0 mt-2 w-80 rounded-xl border shadow-xl z-50 overflow-hidden ${
+                    darkMode ? 'bg-dark-800 border-gray-700 shadow-black/35' : 'bg-white border-gray-200 shadow-gray-200/50'
+                  }`}
+                    style={{ animation: 'slideDown 0.2s ease-out' }}
+                  >
+                    <div className={`px-4 py-3 border-b flex justify-between items-center ${
+                      darkMode ? 'border-gray-700 bg-dark-900' : 'border-gray-100 bg-gray-50'
+                    }`}>
+                      <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Alert Notifications
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="text-[10px] bg-red-50/10 text-red-500 font-bold px-2 py-0.5 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto divide-y divide-gray-150 dark:divide-gray-750">
+                      {notifications.map((n) => (
+                        <div
+                          key={n._id}
+                          onClick={() => {
+                            handleMarkRead(n._id)
+                            setNotificationsOpen(false)
+                          }}
+                          className={`p-4 text-xs text-left transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 flex gap-2 items-start ${
+                            !n.isRead ? (darkMode ? 'bg-primary-950/10' : 'bg-primary-50/20') : ''
+                          }`}
+                        >
+                          <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${
+                            !n.isRead ? 'bg-primary-500' : 'bg-transparent'
+                          }`} />
+                          <div className="space-y-1">
+                            <p className={darkMode ? 'text-gray-200' : 'text-gray-800'}>
+                              {n.text}
+                            </p>
+                            <span className="text-[9px] text-gray-400 block">
+                              {new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {notifications.length === 0 && (
+                        <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                          You have no notifications yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Auth: Show user dropdown or Sign In button */}
           {isAuthenticated ? (

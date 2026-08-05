@@ -6,6 +6,7 @@
 const Booking = require('../models/Booking');
 const Homestay = require('../models/Homestay');
 const { logAction } = require('../utils/auditLogger');
+const Notification = require('../models/Notification');
 
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
@@ -22,7 +23,7 @@ if (process.env.STRIPE_SECRET_KEY) {
  */
 const createPaymentSession = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentType = 'full' } = req.body;
+    const { homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentType = 'full', promoCode } = req.body;
 
     if (!homestayId || !checkIn || !checkOut) {
       return res.status(400).json({ success: false, message: 'homestayId, checkIn, and checkOut are required' });
@@ -54,9 +55,20 @@ const createPaymentSession = async (req, res) => {
 
     const diffDays = Math.max(1, Math.ceil(Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
     const basePrice = diffDays * homestay.pricePerNight;
-    const serviceFee = Math.round(basePrice * 0.05);
-    const tax = Math.round(basePrice * 0.12);
-    const totalPrice = basePrice + serviceFee + tax;
+
+    let discountPercent = 0;
+    if (promoCode) {
+      const Coupon = require('../models/Coupon');
+      const coupon = await Coupon.findOne({ code: promoCode.trim().toUpperCase(), isActive: true });
+      if (coupon && (!coupon.expiresAt || new Date(coupon.expiresAt) > new Date())) {
+        discountPercent = coupon.discountPercent;
+      }
+    }
+    const discountAmount = Math.round(basePrice * (discountPercent / 100));
+    const basePriceAfterDiscount = basePrice - discountAmount;
+    const serviceFee = Math.round(basePriceAfterDiscount * 0.05);
+    const tax = Math.round(basePriceAfterDiscount * 0.12);
+    const totalPrice = basePriceAfterDiscount + serviceFee + tax;
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -151,7 +163,7 @@ const createPaymentSession = async (req, res) => {
  */
 const verifyPayment = async (req, res) => {
   try {
-    const { sessionId, homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentId, paymentType = 'full' } = req.body;
+    const { sessionId, homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentId, paymentType = 'full', promoCode } = req.body;
 
     if (!homestayId || !checkIn || !checkOut) {
       return res.status(400).json({ success: false, message: 'Missing required booking parameters' });
@@ -198,9 +210,20 @@ const verifyPayment = async (req, res) => {
 
     const diffDays = Math.max(1, Math.ceil(Math.abs(checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
     const basePrice = diffDays * homestay.pricePerNight;
-    const serviceFee = Math.round(basePrice * 0.05);
-    const tax = Math.round(basePrice * 0.12);
-    const totalPrice = basePrice + serviceFee + tax;
+
+    let discountPercent = 0;
+    if (promoCode) {
+      const Coupon = require('../models/Coupon');
+      const coupon = await Coupon.findOne({ code: promoCode.trim().toUpperCase(), isActive: true });
+      if (coupon && (!coupon.expiresAt || new Date(coupon.expiresAt) > new Date())) {
+        discountPercent = coupon.discountPercent;
+      }
+    }
+    const discountAmount = Math.round(basePrice * (discountPercent / 100));
+    const basePriceAfterDiscount = basePrice - discountAmount;
+    const serviceFee = Math.round(basePriceAfterDiscount * 0.05);
+    const tax = Math.round(basePriceAfterDiscount * 0.12);
+    const totalPrice = basePriceAfterDiscount + serviceFee + tax;
 
     const depositPaid = paymentType === 'deposit' ? Math.round(totalPrice * 0.20) : totalPrice;
     const remainingBalance = totalPrice - depositPaid;
@@ -231,6 +254,18 @@ const verifyPayment = async (req, res) => {
     const populatedBooking = await Booking.findById(booking._id)
       .populate('homestay', 'name location image pricePerNight owner')
       .populate('customer', 'name email');
+
+    // Notify customer
+    await Notification.create({
+      recipient: booking.customer,
+      text: `Your reservation at ${homestay.name} is confirmed! Amount paid: ₹${depositPaid.toLocaleString()}.`,
+    });
+
+    // Notify host
+    await Notification.create({
+      recipient: homestay.owner,
+      text: `New reservation received for ${homestay.name} by ${req.user.name}.`,
+    });
 
     res.status(201).json({
       success: true,

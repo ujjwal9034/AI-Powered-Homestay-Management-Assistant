@@ -5,6 +5,7 @@
 
 const Booking = require('../models/Booking');
 const Homestay = require('../models/Homestay');
+const Notification = require('../models/Notification');
 const { generateHostBookingMessage } = require('../config/gemini');
 
 /**
@@ -177,6 +178,11 @@ const updateBookingStatus = async (req, res) => {
 
     booking.status = status;
     await booking.save();
+
+    await Notification.create({
+      recipient: booking.customer,
+      text: `Your booking status has been updated to '${status}'.`,
+    });
 
     res.status(200).json({
       success: true,

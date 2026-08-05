@@ -8,6 +8,7 @@ const Review = require('../models/Review');
 const Homestay = require('../models/Homestay');
 const AuditLog = require('../models/AuditLog');
 const { logAction } = require('../utils/auditLogger');
+const Notification = require('../models/Notification');
 
 /**
  * GET /api/admin/stats
@@ -233,6 +234,11 @@ const verifyOwnerStatus = async (req, res) => {
 
     user.ownerStatus = ownerStatus;
     await user.save();
+
+    await Notification.create({
+      recipient: user._id,
+      text: `Your host verification status has been updated to '${ownerStatus}'.`,
+    });
 
     await logAction({
       action: `HOST_KYC_${ownerStatus.toUpperCase()}`,
