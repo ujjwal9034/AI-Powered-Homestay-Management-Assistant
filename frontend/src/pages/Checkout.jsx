@@ -51,6 +51,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState(null); // 'connecting' | 'authorizing' | 'success'
+  const [paymentType, setPaymentType] = useState('full'); // 'full' | 'deposit'
 
   // Card Form Inputs
   const [cardName, setCardName] = useState('');
@@ -154,6 +155,7 @@ export default function Checkout() {
         checkOut,
         guestsCount,
         paymentMethod,
+        paymentType,
       });
 
       // If real Stripe URL is returned, redirect to Stripe Hosted Page
@@ -174,6 +176,7 @@ export default function Checkout() {
         paymentMethod,
         sessionId: sessionRes.sessionId,
         paymentId: `PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        paymentType,
       });
 
       if (res.success) {
@@ -266,6 +269,43 @@ export default function Checkout() {
                   <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     Select your payment method below to complete your homestay booking.
                   </p>
+                </div>
+
+                {/* Choose Payment Option */}
+                <div className="space-y-3 pt-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Payment Plan
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentType('full')}
+                      className={`p-4 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                        paymentType === 'full'
+                          ? 'border-primary-500 bg-primary-500/10 text-primary-500 shadow-md shadow-primary-500/5'
+                          : darkMode
+                          ? 'border-gray-750 bg-dark-900 text-gray-400 hover:border-gray-650'
+                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-xs font-bold">Pay in Full</span>
+                      <span className="text-[10px] text-gray-500">₹{totalPrice.toLocaleString()} paid today</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentType('deposit')}
+                      className={`p-4 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                        paymentType === 'deposit'
+                          ? 'border-primary-500 bg-primary-500/10 text-primary-500 shadow-md shadow-primary-500/5'
+                          : darkMode
+                          ? 'border-gray-750 bg-dark-900 text-gray-400 hover:border-gray-650'
+                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-xs font-bold">Pay 20% Deposit Now</span>
+                      <span className="text-[10px] text-gray-500">₹{Math.round(totalPrice * 0.20).toLocaleString()} today (₹{Math.round(totalPrice * 0.80).toLocaleString()} on check-in)</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Interactive Payment Method Selector Tabs */}
@@ -467,7 +507,7 @@ export default function Checkout() {
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-heading font-bold text-sm shadow-xl shadow-primary-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2.5"
                   >
                     <Lock className="w-4 h-4" />
-                    <span>Pay ₹{totalPrice.toLocaleString()} & Confirm Booking</span>
+                    <span>Pay ₹{(paymentType === 'deposit' ? Math.round(totalPrice * 0.20) : totalPrice).toLocaleString()} & Confirm Booking</span>
                   </button>
                 </form>
               </div>
@@ -541,13 +581,59 @@ export default function Checkout() {
                   <span className="text-gray-900 dark:text-white">Total Amount</span>
                   <span className="text-primary-500">₹{totalPrice.toLocaleString()}</span>
                 </div>
+
+                {/* Deposit Details */}
+                {paymentType === 'deposit' && (
+                  <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between text-emerald-500 font-semibold">
+                      <span>Paid Today (20%):</span>
+                      <span>₹{Math.round(totalPrice * 0.20).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>Remaining Balance (80% due at check-in):</span>
+                      <span className="font-semibold">₹{Math.round(totalPrice * 0.80).toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Escrow Safeguard Badge & Cancellation Estimator */}
+              <div className={`p-4 rounded-2xl border text-xs space-y-3.5 ${
+                darkMode ? 'bg-dark-900 border-gray-705' : 'bg-amber-500/5 border-amber-500/10'
+              }`}>
+                <div className="flex gap-2.5 items-start">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-bold text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Escrow Safeguard Active</h5>
+                    <p className="text-[10px] mt-0.5 text-gray-500">Funds are held securely by StayWise and will only be disbursed to the host 24 hours after your check-in.</p>
+                  </div>
+                </div>
+                
+                <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700">
+                  <h5 className={`font-bold text-[11px] mb-2 uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-655'}`}>Cancellation Refund Schedule</h5>
+                  
+                  {/* Timeline Estimator */}
+                  <div className="relative pl-4 border-l-2 border-primary-500/30 space-y-3 py-1">
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-primary-500" />
+                      <div className="text-[10px] font-bold text-gray-800 dark:text-gray-200">Before {(() => {
+                        const date = new Date();
+                        date.setDate(date.getDate() + 3);
+                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                      })()}</div>
+                      <div className="text-[9px] text-gray-500">Free Cancellation (100% Refund)</div>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-amber-500" />
+                      <div className="text-[10px] font-bold text-gray-800 dark:text-gray-200">After check-in begins</div>
+                      <div className="text-[9px] text-gray-500">Late cancellation fee (20% deposit retained)</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Security Seals */}
               <div className="pt-2 text-[11px] text-gray-400 space-y-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2 text-emerald-500 font-semibold">
-                  <ShieldCheck className="w-4 h-4" /> 100% Money-Back & Free Cancellation Guarantee
-                </div>
                 <p>All sensitive payment data is encrypted using SSL & PCI-DSS Level 1 standards.</p>
               </div>
             </div>

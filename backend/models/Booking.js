@@ -82,6 +82,24 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    paymentType: {
+      type: String,
+      enum: ['full', 'deposit'],
+      default: 'full',
+    },
+    depositPaid: {
+      type: Number,
+      default: 0,
+    },
+    remainingBalance: {
+      type: Number,
+      default: 0,
+    },
+    escrowStatus: {
+      type: String,
+      enum: ['held', 'released', 'refunded'],
+      default: 'held',
+    },
   },
   {
     timestamps: true,

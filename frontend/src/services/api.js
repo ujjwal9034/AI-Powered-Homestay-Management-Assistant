@@ -193,6 +193,11 @@ export const enhanceHomestayDescription = async (data) => {
   return response.data;
 };
 
+export const releaseBookingEscrow = async (bookingId) => {
+  const response = await api.patch(`/api/payments/${bookingId}/escrow`);
+  return response.data;
+};
+
 // Booking APIs
 export const createBooking = async (data) => {
   const response = await api.post('/api/bookings', data);

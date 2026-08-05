@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl } from '../services/api'
+import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl, releaseBookingEscrow } from '../services/api'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
 import AnalyticsChart from '../components/ui/AnalyticsChart'
@@ -338,6 +338,20 @@ export default function OwnerDashboard() {
     }
   }
 
+  const handleReleaseEscrow = async (bookingId) => {
+    try {
+      const res = await releaseBookingEscrow(bookingId)
+      if (res.success) {
+        setBookings((prev) =>
+          prev.map((b) => (b._id === bookingId ? { ...b, escrowStatus: 'released' } : b))
+        )
+        showAction('Payout successfully disbursed to your bank account!')
+      }
+    } catch (err) {
+      showAction(err.response?.data?.message || 'Failed to claim escrow payout', true)
+    }
+  }
+
   const renderStars = (rating) => (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
@@ -479,11 +493,32 @@ export default function OwnerDashboard() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
                           <div>📅 {new Date(booking.checkIn).toLocaleDateString()} - {new Date(booking.checkOut).toLocaleDateString()}</div>
                           <div>🌙 {booking.nights} night{booking.nights > 1 ? 's' : ''}</div>
                           <div>👥 {booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''}</div>
                           <div className="font-semibold text-primary-500">💰 ₹{booking.totalPrice?.toLocaleString()}</div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-[10px] pt-1">
+                          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                            booking.paymentType === 'deposit'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/10'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10'
+                          }`}>
+                            {booking.paymentType === 'deposit' 
+                              ? `Split Deposit Paid: ₹${booking.depositPaid?.toLocaleString()} (Due on arrival: ₹${booking.remainingBalance?.toLocaleString()})`
+                              : `Paid In Full: ₹${booking.totalPrice?.toLocaleString()}`
+                            }
+                          </span>
+
+                          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                            booking.escrowStatus === 'released'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10'
+                              : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10'
+                          }`}>
+                            🛡️ Escrow: {booking.escrowStatus === 'released' ? 'Disbursed to your bank' : 'Held by StayWise (Escrow)'}
+                          </span>
                         </div>
                       </div>
 
@@ -505,23 +540,47 @@ export default function OwnerDashboard() {
                           </div>
                         )}
 
-                        {booking.status === 'confirmed' ? (
-                          <button
-                            onClick={() => handleStatusChange(booking._id, 'cancelled')}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/35 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
-                          >
-                            ❌ Cancel
-                          </button>
-                        ) : booking.status === 'cancelled' ? (
-                          <button
-                            onClick={() => handleStatusChange(booking._id, 'confirmed')}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
-                          >
-                            ✅ Reinstate
-                          </button>
-                        ) : (
-                          <span className="text-xs italic text-gray-400">No actions available</span>
-                        )}
+                         {booking.status === 'confirmed' ? (
+                           <>
+                             <button
+                               onClick={() => handleStatusChange(booking._id, 'cancelled')}
+                               className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/35 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+                             >
+                               ❌ Cancel
+                             </button>
+                             
+                             {booking.escrowStatus === 'held' && (
+                               (() => {
+                                 const isReleasable = new Date() >= new Date(booking.checkIn);
+                                 return isReleasable ? (
+                                   <button
+                                     onClick={() => handleReleaseEscrow(booking._id)}
+                                     className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-emerald-250 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800/35 dark:text-emerald-400 dark:hover:bg-emerald-950/20 transition-colors"
+                                   >
+                                     🔓 Claim Payout
+                                   </button>
+                                 ) : (
+                                   <button
+                                     disabled
+                                     title="Escrow releases 24h after check-in"
+                                     className="px-3 py-1.5 rounded-lg border text-xs font-semibold border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60"
+                                   >
+                                     🔒 Payout Locked
+                                   </button>
+                                 );
+                               })()
+                             )}
+                           </>
+                         ) : booking.status === 'cancelled' ? (
+                           <button
+                             onClick={() => handleStatusChange(booking._id, 'confirmed')}
+                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
+                           >
+                             ✅ Reinstate
+                           </button>
+                         ) : (
+                           <span className="text-xs italic text-gray-400">No actions available</span>
+                         )}
 
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           booking.status === 'confirmed'

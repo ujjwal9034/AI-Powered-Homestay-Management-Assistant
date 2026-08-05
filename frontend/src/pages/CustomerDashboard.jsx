@@ -25,6 +25,7 @@ import {
   MessageSquare,
   Trash2,
   Heart,
+  ShieldCheck,
 } from 'lucide-react'
 
 export default function CustomerDashboard() {
@@ -358,6 +359,36 @@ export default function CustomerDashboard() {
                       <div>
                         <span className={`block text-[10px] uppercase font-bold ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Guests</span>
                         <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+
+                    {/* Escrow and Payment Plan Summary */}
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
+                      <div className={`px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${
+                        booking.paymentType === 'deposit'
+                          ? 'border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400'
+                          : 'border-emerald-500/25 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        <span className="font-bold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-white/25">
+                          {booking.paymentType === 'deposit' ? 'Split Deposit' : 'Full Payment'}
+                        </span>
+                        <span>
+                          {booking.paymentType === 'deposit' 
+                            ? `Paid Deposit: ₹${booking.depositPaid?.toLocaleString()} (Balance ₹${booking.remainingBalance?.toLocaleString()} due at check-in)`
+                            : `Paid In Full: ₹${booking.totalPrice?.toLocaleString()}`
+                          }
+                        </span>
+                      </div>
+                      
+                      <div className={`px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${
+                        booking.escrowStatus === 'released'
+                          ? 'border-emerald-500/25 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+                          : 'border-blue-500/25 bg-blue-500/5 text-blue-600 dark:text-blue-400'
+                      }`}>
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>
+                          Escrow Safe: <strong>{booking.escrowStatus === 'released' ? 'Disbursed to Host' : 'Held by StayWise'}</strong>
+                        </span>
                       </div>
                     </div>
                   </div>

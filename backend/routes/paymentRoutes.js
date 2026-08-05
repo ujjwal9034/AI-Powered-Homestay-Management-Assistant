@@ -12,6 +12,7 @@ const {
   createPaymentSession,
   verifyPayment,
   getPaymentReceipt,
+  releaseEscrow,
 } = require('../controllers/paymentController');
 
 // Guest endpoints
@@ -20,5 +21,8 @@ router.post('/verify', protect, authorize('customer'), verifyPayment);
 
 // Payment receipt / invoice endpoint (Guest, Host, Admin)
 router.get('/receipt/:bookingId', protect, getPaymentReceipt);
+
+// Escrow release trigger (Guest, Host, Admin)
+router.patch('/:bookingId/escrow', protect, releaseEscrow);
 
 module.exports = router;

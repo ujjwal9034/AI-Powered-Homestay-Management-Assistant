@@ -21,7 +21,7 @@ if (process.env.STRIPE_SECRET_KEY) {
  */
 const createPaymentSession = async (req, res) => {
   try {
-    const { homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card' } = req.body;
+    const { homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentType = 'full' } = req.body;
 
     if (!homestayId || !checkIn || !checkOut) {
       return res.status(400).json({ success: false, message: 'homestayId, checkIn, and checkOut are required' });
@@ -106,6 +106,9 @@ const createPaymentSession = async (req, res) => {
     // Fallback sandbox token generator
     const sessionId = `SESS_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+    const depositPaid = paymentType === 'deposit' ? Math.round(totalPrice * 0.20) : totalPrice;
+    const remainingBalance = totalPrice - depositPaid;
+
     res.status(200).json({
       success: true,
       mode: 'sandbox',
@@ -128,6 +131,9 @@ const createPaymentSession = async (req, res) => {
         serviceFee,
         tax,
         totalPrice,
+        paymentType,
+        depositPaid,
+        remainingBalance,
       },
       paymentMethod,
       currency: 'INR',
@@ -144,7 +150,7 @@ const createPaymentSession = async (req, res) => {
  */
 const verifyPayment = async (req, res) => {
   try {
-    const { sessionId, homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentId } = req.body;
+    const { sessionId, homestayId, checkIn, checkOut, guestsCount = 1, paymentMethod = 'card', paymentId, paymentType = 'full' } = req.body;
 
     if (!homestayId || !checkIn || !checkOut) {
       return res.status(400).json({ success: false, message: 'Missing required booking parameters' });
@@ -195,6 +201,8 @@ const verifyPayment = async (req, res) => {
     const tax = Math.round(basePrice * 0.12);
     const totalPrice = basePrice + serviceFee + tax;
 
+    const depositPaid = paymentType === 'deposit' ? Math.round(totalPrice * 0.20) : totalPrice;
+    const remainingBalance = totalPrice - depositPaid;
     const finalPaymentId = verifiedPaymentId || `PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const booking = await Booking.create({
@@ -213,6 +221,10 @@ const verifyPayment = async (req, res) => {
       paymentMethod: stripe ? 'stripe' : (paymentMethod || 'card'),
       paymentId: finalPaymentId,
       paidAt: new Date(),
+      paymentType,
+      depositPaid,
+      remainingBalance,
+      escrowStatus: 'held',
     });
 
     const populatedBooking = await Booking.findById(booking._id)
@@ -288,8 +300,58 @@ const getPaymentReceipt = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/payments/:bookingId/escrow
+ * Protected — Release escrow funds to host's bank.
+ */
+const releaseEscrow = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId).populate('homestay');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const isCustomer = booking.customer.toString() === req.user._id.toString();
+    const isOwner = booking.homestay.owner.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isCustomer && !isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized to change escrow status' });
+    }
+
+    // If owner tries to release, check if check-in has passed
+    if (isOwner && !isAdmin && !isCustomer) {
+      const checkInTime = new Date(booking.checkIn).getTime();
+      const now = Date.now();
+      if (now < checkInTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Escrow can only be claimed by the host after check-in has commenced.'
+        });
+      }
+    }
+
+    if (booking.escrowStatus === 'released') {
+      return res.status(400).json({ success: false, message: 'Escrow funds are already disbursed' });
+    }
+
+    booking.escrowStatus = 'released';
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Escrow funds released and disbursed to host bank successfully',
+      data: booking
+    });
+  } catch (error) {
+    console.error('[releaseEscrow] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to disburse escrow funds', error: error.message });
+  }
+};
+
 module.exports = {
   createPaymentSession,
   verifyPayment,
   getPaymentReceipt,
+  releaseEscrow,
 };
