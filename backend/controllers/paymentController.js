@@ -5,6 +5,7 @@
 
 const Booking = require('../models/Booking');
 const Homestay = require('../models/Homestay');
+const { logAction } = require('../utils/auditLogger');
 
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
@@ -337,6 +338,15 @@ const releaseEscrow = async (req, res) => {
 
     booking.escrowStatus = 'released';
     await booking.save();
+
+    await logAction({
+      action: 'ESCROW_RELEASED',
+      actor: req.user._id,
+      target: booking._id,
+      targetType: 'Booking',
+      details: `Escrow payout released for booking on property '${booking.homestay?.name || 'Property'}'. Status set to 'released'.`,
+      req,
+    });
 
     res.status(200).json({
       success: true,

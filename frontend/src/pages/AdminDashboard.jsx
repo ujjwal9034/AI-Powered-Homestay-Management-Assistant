@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
-import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays, adminToggleUserBan, adminVerifyOwner, resolveImageUrl } from '../services/api'
+import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays, adminToggleUserBan, adminVerifyOwner, resolveImageUrl, fetchAdminAuditLogs } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import AnalyticsChart from '../components/ui/AnalyticsChart'
 import { Check, X, Ban, Unlock, Eye } from 'lucide-react'
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [reviews, setReviews] = useState([])
   const [homestays, setHomestays] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedKycUser, setSelectedKycUser] = useState(null)
@@ -27,16 +28,18 @@ export default function AdminDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [sRes, uRes, rRes, hRes] = await Promise.all([
+      const [sRes, uRes, rRes, hRes, aRes] = await Promise.all([
         fetchAdminStats(),
         fetchAllUsers(),
         fetchAllReviews(),
         fetchHomestays(),
+        fetchAdminAuditLogs(),
       ])
       setStats(sRes.data)
       setUsers(uRes.data || [])
       setReviews(rRes.data || [])
       setHomestays(hRes.data || [])
+      setAuditLogs(aRes.data || [])
     } catch (err) {
       console.warn('Failed to load admin data:', err.message)
     } finally {
@@ -166,6 +169,7 @@ export default function AdminDashboard() {
             { id: 'users', label: '👥 Users' },
             { id: 'reviews', label: '⭐ Reviews' },
             { id: 'homestays', label: '🏡 Homestays' },
+            { id: 'audit_logs', label: '📜 Audit Logs' },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setActiveTab(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${activeTab === id ? 'bg-primary-500 text-white shadow-md' : darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               {label}
@@ -361,6 +365,64 @@ export default function AdminDashboard() {
                       <td className={`px-6 py-4 text-sm font-medium ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>₹{h.pricePerNight?.toLocaleString()}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Audit Logs Tab */}
+        {activeTab === 'audit_logs' && (
+          <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className={darkMode ? 'bg-dark-900' : 'bg-gray-50'}>
+                    {['Timestamp', 'Action', 'Actor', 'Details', 'IP Address'].map((h) => (
+                      <th key={h} className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                  {auditLogs.map((log) => (
+                    <tr key={log._id} className={`${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
+                      <td className={`px-6 py-4 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {new Date(log.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                          log.action?.includes('BAN')
+                            ? 'bg-rose-500/10 text-rose-550 border-rose-500/20'
+                            : log.action?.includes('KYC')
+                            ? 'bg-amber-500/10 text-amber-550 border-amber-500/20'
+                            : 'bg-primary-500/10 text-primary-500 border-primary-500/20'
+                        }`}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{log.actor?.name || 'System'}</span>
+                          <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{log.actor?.email || '—'}</span>
+                        </div>
+                      </td>
+                      <td className={`px-6 py-4 text-sm leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {log.details}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-mono text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {log.ipAddress || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {auditLogs.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                        No platform audit logs recorded yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

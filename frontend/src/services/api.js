@@ -213,6 +213,11 @@ export const adminVerifyOwner = async (userId, ownerStatus) => {
   return response.data;
 };
 
+export const fetchAdminAuditLogs = async () => {
+  const response = await api.get('/api/admin/audit-logs');
+  return response.data;
+};
+
 // Booking APIs
 export const createBooking = async (data) => {
   const response = await api.post('/api/bookings', data);

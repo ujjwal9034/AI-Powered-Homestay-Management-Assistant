@@ -6,6 +6,8 @@
 const User = require('../models/User');
 const Review = require('../models/Review');
 const Homestay = require('../models/Homestay');
+const AuditLog = require('../models/AuditLog');
+const { logAction } = require('../utils/auditLogger');
 
 /**
  * GET /api/admin/stats
@@ -92,6 +94,15 @@ const updateUserRole = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    await logAction({
+      action: 'USER_ROLE_CHANGE',
+      actor: req.user._id,
+      target: user._id,
+      targetType: 'User',
+      details: `Admin changed role of ${user.name} (${user.email}) to '${role}'`,
+      req,
+    });
+
     res.status(200).json({
       success: true,
       message: `User role updated to '${role}'`,
@@ -133,6 +144,15 @@ const deleteUser = async (req, res) => {
       await Homestay.deleteMany({ owner: user._id });
     }
 
+    await logAction({
+      action: 'USER_DELETED',
+      actor: req.user._id,
+      target: user._id,
+      targetType: 'User',
+      details: `Admin deleted user ${user.name} (${user.email}, role: ${user.role}) and all associated data`,
+      req,
+    });
+
     await User.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -171,6 +191,15 @@ const toggleUserBan = async (req, res) => {
     user.isBanned = isBanned;
     await user.save();
 
+    await logAction({
+      action: isBanned ? 'USER_BANNED' : 'USER_UNBANNED',
+      actor: req.user._id,
+      target: user._id,
+      targetType: 'User',
+      details: `Admin ${isBanned ? 'banned' : 'unbanned'} user ${user.name} (${user.email})`,
+      req,
+    });
+
     res.status(200).json({
       success: true,
       message: `User account has been successfully ${isBanned ? 'banned' : 'unbanned'}.`,
@@ -205,6 +234,15 @@ const verifyOwnerStatus = async (req, res) => {
     user.ownerStatus = ownerStatus;
     await user.save();
 
+    await logAction({
+      action: `HOST_KYC_${ownerStatus.toUpperCase()}`,
+      actor: req.user._id,
+      target: user._id,
+      targetType: 'User',
+      details: `Admin set KYC verification status of host ${user.name} (${user.email}) to '${ownerStatus}'`,
+      req,
+    });
+
     res.status(200).json({
       success: true,
       message: `Owner account has been successfully ${ownerStatus}.`,
@@ -216,4 +254,26 @@ const verifyOwnerStatus = async (req, res) => {
   }
 };
 
-module.exports = { getAdminStats, getAllUsers, updateUserRole, deleteUser, toggleUserBan, verifyOwnerStatus };
+/**
+ * GET /api/admin/audit-logs
+ * Admin only — Retrieve all platform audit logs.
+ */
+const getAuditLogs = async (req, res) => {
+  try {
+    const logs = await AuditLog.find()
+      .populate('actor', 'name email role')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      data: logs,
+    });
+  } catch (error) {
+    console.error('[getAuditLogs] Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch audit logs', error: error.message });
+  }
+};
+
+module.exports = { getAdminStats, getAllUsers, updateUserRole, deleteUser, toggleUserBan, verifyOwnerStatus, getAuditLogs };
