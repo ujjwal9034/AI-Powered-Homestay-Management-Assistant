@@ -9,7 +9,7 @@
  * - Fully supports dark mode
  */
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchHomestays, resolveImageUrl, toggleWishlist, smartSearchHomestays } from '../services/api'
@@ -46,6 +46,7 @@ const PRICE_RANGES = [
 ]
 
 export default function Explore() {
+  const navigate = useNavigate()
   const { darkMode } = useTheme()
   const { user, updateUser, isAuthenticated } = useAuth()
   const { showToast } = useToast()
@@ -127,6 +128,27 @@ export default function Explore() {
     return locs.sort()
   }, [homestays])
   const [selectedLocation, setSelectedLocation] = useState('')
+
+  const matchedSuggestions = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    const matches = [];
+    const matchedLocs = new Set();
+    homestays.forEach((h) => {
+      if (h.location?.toLowerCase().includes(q)) {
+        matchedLocs.add(h.location);
+      }
+    });
+    Array.from(matchedLocs).slice(0, 3).forEach((loc) => {
+      matches.push({ type: 'location', text: loc, title: `📍 Stays in ${loc}` });
+    });
+    homestays.forEach((h) => {
+      if (h.name?.toLowerCase().includes(q)) {
+        matches.push({ type: 'property', text: h.name, id: h._id, title: `🏡 ${h.name}` });
+      }
+    });
+    return matches.slice(0, 6);
+  }, [search, homestays]);
 
   // Filtered and sorted results
   const filteredHomestays = useMemo(() => {
@@ -289,28 +311,63 @@ export default function Explore() {
 
             {searchFocused && (
               <div className={`absolute left-0 right-0 mt-1 p-4 rounded-2xl border text-left shadow-2xl z-50 backdrop-blur-md ${darkMode ? 'bg-dark-900/95 border-gray-700 text-gray-200' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  Try Smart AI Search Queries
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {[
-                    'cozy cabin in Manali with high-speed Wi-Fi',
-                    'luxury villa in Goa under ₹5,000 per night',
-                    'homestay in Kerala with lake view',
-                    'budget stay in Jaipur with free breakfast'
-                  ].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onMouseDown={() => handleSuggestionClick(s)}
-                      className={`text-sm text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${darkMode ? 'hover:bg-white/5 text-gray-300 hover:text-white' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
-                    >
-                      <span className="text-amber-400">⚡</span>
-                      {s}
-                    </button>
-                  ))}
-                </div>
+                {search.trim() ? (
+                  <>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                      🔎 Matching Properties & Locations
+                    </h4>
+                    <div className="flex flex-col gap-2">
+                      {matchedSuggestions.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onMouseDown={() => {
+                            if (item.type === 'location') {
+                              setSearch(item.text);
+                            } else {
+                              navigate(`/homestays/${item.id}`);
+                            }
+                            setSearchFocused(false);
+                          }}
+                          className={`text-sm text-left px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-between ${darkMode ? 'hover:bg-white/5 text-gray-300 hover:text-white' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+                        >
+                          <span>{item.title}</span>
+                          <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                            {item.type}
+                          </span>
+                        </button>
+                      ))}
+                      {matchedSuggestions.length === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-2">No matching properties or locations found.</p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      Try Smart AI Search Queries
+                    </h4>
+                    <div className="flex flex-col gap-2">
+                      {[
+                        'cozy cabin in Manali with high-speed Wi-Fi',
+                        'luxury villa in Goa under ₹5,000 per night',
+                        'homestay in Kerala with lake view',
+                        'budget stay in Jaipur with free breakfast'
+                      ].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onMouseDown={() => handleSuggestionClick(s)}
+                          className={`text-sm text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${darkMode ? 'hover:bg-white/5 text-gray-300 hover:text-white' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+                        >
+                          <span className="text-amber-400">⚡</span>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

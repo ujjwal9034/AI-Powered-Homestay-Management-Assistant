@@ -56,6 +56,7 @@ export default function Checkout() {
   const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discountPercent }
   const [couponError, setCouponError] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
 
   // Card Form Inputs
   const [cardName, setCardName] = useState('');
@@ -407,6 +408,50 @@ export default function Checkout() {
                         </button>
                       </div>
 
+                      {/* 3D Animated Card Preview */}
+                      <div className="relative w-full h-44 mb-6" style={{ perspective: '1000px' }}>
+                        <div className="relative w-full h-full duration-500 transition-transform" style={{ transformStyle: 'preserve-3d', transform: isCardFlipped ? 'rotateY(180deg)' : 'none' }}>
+                          {/* Front of the Card */}
+                          <div className="absolute inset-0 w-full h-full rounded-2xl p-5 flex flex-col justify-between text-white shadow-xl bg-gradient-to-br from-primary-600 to-accent-600" style={{ backfaceVisibility: 'hidden' }}>
+                            <div className="flex justify-between items-start">
+                              <span className="text-lg font-bold italic tracking-wider">StayWise</span>
+                              <div className="w-10 h-7 rounded bg-white/10 flex items-center justify-center font-bold text-[9px] uppercase tracking-wider text-white border border-white/20">CHIP</div>
+                            </div>
+                            <div className="space-y-4">
+                              <div className="text-lg font-mono tracking-widest text-center">
+                                {cardNumber || '•••• •••• •••• ••••'}
+                              </div>
+                              <div className="flex justify-between text-[10px] font-mono uppercase">
+                                <div>
+                                  <div className="text-white/60 text-[8px]">Cardholder</div>
+                                  <div className="truncate max-w-[150px]">{cardName || 'YOUR FULL NAME'}</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-white/60 text-[8px]">Expires</div>
+                                  <div>{cardExpiry || 'MM/YY'}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Back of the Card */}
+                          <div className="absolute inset-0 w-full h-full rounded-2xl flex flex-col justify-between py-5 text-white shadow-xl bg-gradient-to-br from-accent-750 to-primary-850" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}>
+                            <div className="w-full h-8 bg-black/40 mt-1" />
+                            <div className="px-5 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 h-7 bg-white/10 rounded" />
+                                <div className="w-12 h-7 bg-amber-100 text-dark-900 font-bold text-center flex items-center justify-center text-xs tracking-wider font-mono">
+                                  {cardCvv || '•••'}
+                                </div>
+                              </div>
+                              <p className="text-[7px] text-white/50 text-center leading-normal">
+                                This card is simulated securely for reservation checkouts. Do not enter actual credentials unless using test gates.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Cardholder Full Name</label>
                         <input
@@ -451,6 +496,8 @@ export default function Checkout() {
                             placeholder="123"
                             value={cardCvv}
                             onChange={(e) => setCardCvv(e.target.value)}
+                            onFocus={() => setIsCardFlipped(true)}
+                            onBlur={() => setIsCardFlipped(false)}
                             required
                             className={inputStyle}
                           />

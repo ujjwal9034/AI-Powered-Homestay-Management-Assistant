@@ -43,6 +43,8 @@ export default function HomestayDetail() {
   const navigate = useNavigate()
   const { darkMode } = useTheme()
   const { user, isAuthenticated, updateUser } = useAuth()
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0)
   const { showToast } = useToast()
 
   const [homestay, setHomestay] = useState(null)
@@ -320,12 +322,59 @@ export default function HomestayDetail() {
 
         {/* Homestay Main Info Card */}
         <div className={`rounded-3xl border overflow-hidden shadow-xl mb-10 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
-          <div className="aspect-[21/9] overflow-hidden">
-            <img
-              src={resolveImageUrl(homestay.image)}
-              alt={homestay.name}
-              className="w-full h-full object-cover"
-            />
+          {/* Airbnb-Style Premium Image Grid */}
+          <div className="relative group cursor-pointer overflow-hidden h-72 sm:h-96" onClick={() => { setActivePhotoIdx(0); setIsLightboxOpen(true); }}>
+            <div className="grid grid-cols-4 grid-rows-2 gap-2 h-full w-full bg-gray-100 dark:bg-dark-900">
+              {/* Main Image */}
+              <div className="col-span-4 sm:col-span-2 row-span-2 overflow-hidden h-full">
+                <img
+                  src={resolveImageUrl(homestay.image)}
+                  alt={homestay.name}
+                  className="w-full h-full object-cover transition-transform duration-550 group-hover:scale-[1.01]"
+                />
+              </div>
+              {/* Secondary grids */}
+              <div className="hidden sm:block overflow-hidden h-full">
+                <img
+                  src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80"
+                  alt="secondary interior"
+                  className="w-full h-full object-cover transition-transform duration-550 hover:scale-[1.03]"
+                />
+              </div>
+              <div className="hidden sm:block overflow-hidden h-full">
+                <img
+                  src="https://images.unsplash.com/photo-1542718610-a1d656d1884c?w=600&q=80"
+                  alt="secondary view"
+                  className="w-full h-full object-cover transition-transform duration-550 hover:scale-[1.03]"
+                />
+              </div>
+              <div className="hidden sm:block overflow-hidden h-full">
+                <img
+                  src="https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=600&q=80"
+                  alt="secondary deck"
+                  className="w-full h-full object-cover transition-transform duration-550 hover:scale-[1.03]"
+                />
+              </div>
+              <div className="hidden sm:block overflow-hidden h-full">
+                <img
+                  src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=600&q=80"
+                  alt="secondary bedroom"
+                  className="w-full h-full object-cover transition-transform duration-550 hover:scale-[1.03]"
+                />
+              </div>
+            </div>
+            
+            {/* Show all photos button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePhotoIdx(0);
+                setIsLightboxOpen(true);
+              }}
+              className="absolute bottom-4 right-4 px-4 py-2 rounded-xl bg-white/90 dark:bg-dark-900/90 text-dark-900 dark:text-white border border-gray-200 dark:border-gray-700 shadow-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-white dark:hover:bg-dark-950 transition-all cursor-pointer select-none"
+            >
+              📷 Show all photos
+            </button>
           </div>
           <div className="p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -908,6 +957,76 @@ export default function HomestayDetail() {
         bookingData={paymentBookingData}
         onSuccess={handlePaymentSuccess}
       />
+
+      {/* Visual Lightbox Photo Viewer Modal */}
+      {isLightboxOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-6 select-none animate-fadeIn">
+          {/* Header row */}
+          <div className="flex justify-between items-center text-white">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              StayWise Premium Gallery ({activePhotoIdx + 1} / 5)
+            </span>
+            <button
+              onClick={() => setIsLightboxOpen(false)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Main slide frame */}
+          <div className="flex-1 flex items-center justify-center relative my-4">
+            {/* Left Button */}
+            <button
+              onClick={() => setActivePhotoIdx((prev) => (prev === 0 ? 4 : prev - 1))}
+              className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-all active:scale-95 z-10 text-xl font-bold"
+            >
+              ‹
+            </button>
+
+            <img
+              src={[
+                resolveImageUrl(homestay.image),
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=90',
+                'https://images.unsplash.com/photo-1542718610-a1d656d1884c?w=1200&q=90',
+                'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=1200&q=90',
+                'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&q=90',
+              ][activePhotoIdx]}
+              alt={`gallery-${activePhotoIdx}`}
+              className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl transition-all duration-300 transform scale-100"
+            />
+
+            {/* Right Button */}
+            <button
+              onClick={() => setActivePhotoIdx((prev) => (prev === 4 ? 0 : prev + 1))}
+              className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-all active:scale-95 z-10 text-xl font-bold"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Bottom Thumbnails */}
+          <div className="flex justify-center gap-2 mt-2">
+            {[
+              resolveImageUrl(homestay.image),
+              'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=120&q=70',
+              'https://images.unsplash.com/photo-1542718610-a1d656d1884c?w=120&q=70',
+              'https://images.unsplash.com/photo-1449034446853-66c86144b0ad?w=120&q=70',
+              'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=120&q=70',
+            ].map((imgUrl, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActivePhotoIdx(idx)}
+                className={`w-14 h-10 rounded overflow-hidden border-2 cursor-pointer transition-all ${
+                  idx === activePhotoIdx ? 'border-primary-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img src={imgUrl} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   )
 }
