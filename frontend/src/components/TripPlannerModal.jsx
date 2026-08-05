@@ -1,13 +1,18 @@
 /**
  * TripPlannerModal — AI-powered trip itinerary generator modal.
  *
+ * Persists the last generated plan per-user in localStorage so that closing
+ * and reopening the modal (or navigating away) keeps the itinerary visible
+ * until the user explicitly generates a new plan or logs out.
+ *
  * Props:
  * - isOpen: Boolean to control visibility
  * - onClose: Callback when modal should close
  * - location: Pre-filled location from the homestay
  */
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 import { generateTripPlan } from '../services/api'
 
 const INTEREST_OPTIONS = [
@@ -21,6 +26,37 @@ const INTEREST_OPTIONS = [
 ]
 
 const TRAVEL_STYLES = ['Budget', 'Standard', 'Luxury']
+
+/** localStorage key scoped to user + location */
+function storageKey(userId, location) {
+  return `staywise-trip-${userId}-${(location || '').toLowerCase().replace(/\s+/g, '-')}`
+}
+
+/**
+ * Save a trip plan to localStorage.
+ */
+function savePlan(userId, location, plan) {
+  try {
+    localStorage.setItem(
+      storageKey(userId, location),
+      JSON.stringify(plan)
+    )
+  } catch {
+    // Silently ignore — storage may be full or disabled
+  }
+}
+
+/**
+ * Load a previously saved trip plan from localStorage.
+ */
+function loadPlan(userId, location) {
+  try {
+    const raw = localStorage.getItem(storageKey(userId, location))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Parse the raw itinerary text into structured sections for card rendering.
@@ -70,6 +106,7 @@ function getSectionStyle(title) {
 
 export default function TripPlannerModal({ isOpen, onClose, location }) {
   const { darkMode } = useTheme()
+  const { user } = useAuth()
 
   // Form state
   const [days, setDays] = useState(3)
@@ -82,6 +119,37 @@ export default function TripPlannerModal({ isOpen, onClose, location }) {
   const [error, setError] = useState(null)
   const [itinerary, setItinerary] = useState(null)
   const [showForm, setShowForm] = useState(true)
+  const [savedMeta, setSavedMeta] = useState(null) // { days, travelStyle, budget, location }
+
+  // ── Restore saved plan when modal opens ──
+  const restoreSavedPlan = useCallback(() => {
+    if (!user?._id || !location) return
+    const saved = loadPlan(user._id, location)
+    if (saved && saved.itinerary) {
+      setItinerary(saved.itinerary)
+      setSavedMeta(saved.meta || null)
+      setShowForm(false)
+      // Restore form values from saved plan so "Generate New Plan" starts with same defaults
+      if (saved.meta) {
+        setDays(saved.meta.days || 3)
+        setBudget(saved.meta.budget || 10000)
+        setTravelStyle(saved.meta.travelStyle || 'Standard')
+        setInterests(saved.meta.interests || [])
+      }
+    } else {
+      // No saved plan — show form
+      setItinerary(null)
+      setShowForm(true)
+      setSavedMeta(null)
+    }
+  }, [user?._id, location])
+
+  useEffect(() => {
+    if (isOpen) {
+      restoreSavedPlan()
+      setError(null)
+    }
+  }, [isOpen, restoreSavedPlan])
 
   const toggleInterest = (value) => {
     setInterests((prev) =>
@@ -107,8 +175,17 @@ export default function TripPlannerModal({ isOpen, onClose, location }) {
         interests,
         travelStyle,
       })
-      setItinerary(res.itinerary)
+      const newItinerary = res.itinerary
+      const meta = { days, budget, interests, travelStyle, location, generatedAt: new Date().toISOString() }
+
+      setItinerary(newItinerary)
+      setSavedMeta(meta)
       setShowForm(false)
+
+      // Persist to localStorage for this user + location
+      if (user?._id) {
+        savePlan(user._id, location, { itinerary: newItinerary, meta })
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -121,19 +198,14 @@ export default function TripPlannerModal({ isOpen, onClose, location }) {
 
   const handleNewPlan = () => {
     setItinerary(null)
+    setSavedMeta(null)
     setShowForm(true)
     setError(null)
   }
 
   const handleClose = () => {
+    // Simply close — do NOT reset itinerary so it persists in localStorage
     onClose()
-    // Reset state after close animation
-    setTimeout(() => {
-      setItinerary(null)
-      setShowForm(true)
-      setError(null)
-      setLoading(false)
-    }, 300)
   }
 
   if (!isOpen) return null
@@ -401,7 +473,7 @@ export default function TripPlannerModal({ isOpen, onClose, location }) {
                 }`}
               >
                 <span className="text-2xl">🎉</span>
-                <div>
+                <div className="flex-1">
                   <p
                     className={`text-sm font-heading font-bold ${
                       darkMode ? 'text-green-300' : 'text-green-700'
@@ -414,10 +486,20 @@ export default function TripPlannerModal({ isOpen, onClose, location }) {
                       darkMode ? 'text-green-400/70' : 'text-green-600/70'
                     }`}
                   >
-                    {days} day{days > 1 ? 's' : ''} · {travelStyle} · ₹
-                    {budget?.toLocaleString()}
+                    {savedMeta
+                      ? `${savedMeta.days} day${savedMeta.days > 1 ? 's' : ''} · ${savedMeta.travelStyle} · ₹${savedMeta.budget?.toLocaleString()}`
+                      : `${days} day${days > 1 ? 's' : ''} · ${travelStyle} · ₹${budget?.toLocaleString()}`}
                   </p>
                 </div>
+                {savedMeta?.generatedAt && (
+                  <span
+                    className={`text-[10px] px-2 py-1 rounded-full ${
+                      darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    Saved
+                  </span>
+                )}
               </div>
 
               {/* Itinerary Cards */}

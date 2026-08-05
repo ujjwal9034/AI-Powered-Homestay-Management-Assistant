@@ -142,6 +142,19 @@ export function AuthProvider({ children }) {
     }
     setUser(null)
     localStorage.removeItem('staywise-user')
+    // Clear all saved trip plans for this session
+    try {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('staywise-trip-')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k))
+    } catch {
+      // Silently ignore
+    }
   }
 
   /**

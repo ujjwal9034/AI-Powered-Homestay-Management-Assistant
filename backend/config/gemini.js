@@ -415,8 +415,16 @@ const generateTripItinerary = async ({ location, days, budget, interests, travel
   }
 
   try {
-    const prompt = `You are a professional travel planner and local expert for StayWise, an AI-powered homestay management platform.
-Create a detailed, personalized travel itinerary for a guest visiting ${location}.
+    const prompt = `You are a professional travel planner and certified local expert for StayWise, an AI-powered homestay management platform.
+Create a detailed, highly accurate, and personalized travel itinerary for a guest visiting ${location}.
+
+CRITICAL LOCATION ACCURACY RULES:
+- Use ONLY real, verified place names that exist and can be found on Google Maps.
+- Include the specific area/neighborhood for each place (e.g. "Hadimba Temple, Old Manali" not just "Hadimba Temple").
+- Include approximate distance from the city center or homestay area where helpful (e.g. "3 km from Mall Road").
+- Include travel time between activities (e.g. "15 min drive" or "10 min walk").
+- For restaurants and cafes, use real establishment names that actually exist in ${location}.
+- For viewpoints, temples, and attractions, use their full official names.
 
 Trip Details:
 - Destination: ${location}
@@ -431,21 +439,21 @@ Generate the itinerary in this EXACT format (use plain text, NO markdown, NO ast
 
 For each day from Day 1 to Day ${days}:
 Day X: [Theme for the day]
-Morning:
-[Activity description with specific place names, timings, and brief details]
-Afternoon:
-[Activity description with specific place names, timings, and brief details]
-Evening:
-[Activity description with specific place names, timings, and brief details]
+Morning (8:00 AM - 12:00 PM):
+[Activity with EXACT real place name, area/locality, approximate distance, and brief description]
+Afternoon (12:00 PM - 5:00 PM):
+[Activity with EXACT real place name, area/locality, approximate distance, and brief description]
+Evening (5:00 PM - 9:00 PM):
+[Activity with EXACT real place name, area/locality, approximate distance, and brief description]
 
 ===== PLACES TO VISIT =====
-[List the top must-visit places in ${location} with one-line descriptions]
+[List 6-8 must-visit places in ${location} with their exact locality/area and one-line descriptions. Format: "Place Name, Area/Locality - Description"]
 
 ===== FOOD RECOMMENDATIONS =====
-[List 4-6 local food items and restaurants/eateries to try, suitable for ${travelStyle} style]
+[List 5-7 REAL restaurants, cafes, or eateries that actually exist in ${location}. Include the area/locality. Format: "Restaurant Name, Area - Signature dish and price range"]
 
 ===== ESTIMATED DAILY BUDGET =====
-[Break down ₹${budget?.toLocaleString() || budget} across ${days} days]
+[Break down ₹${budget?.toLocaleString() || budget} across ${days} days with realistic prices for ${location}]
 Accommodation: ₹___/day
 Food: ₹___/day
 Transport: ₹___/day
@@ -454,21 +462,22 @@ Miscellaneous: ₹___/day
 Total per day: ₹___
 
 ===== TRAVEL TIPS =====
-[5-6 practical travel tips specific to ${location}]
+[6-7 practical travel tips specific to ${location}, including local transport options, best areas to stay, and safety tips]
 
 ===== BEST TIME TO VISIT =====
-[Best months/seasons to visit ${location} and why]
+[Best months/seasons to visit ${location}, current weather context, and why those months are ideal]
 
 ===== PACKING SUGGESTIONS =====
-[6-8 essential items to pack based on ${location} weather and planned activities]
+[7-8 essential items to pack based on ${location} weather, terrain, and planned activities]
 
 Strict guidelines:
-1. Be specific with real place names, timings, and local details for ${location}.
-2. Keep budget estimates realistic for ${travelStyle} travel style in India.
+1. Every place name MUST be a real, verifiable location in or near ${location}. Do NOT invent fictional places.
+2. Keep budget estimates realistic for ${travelStyle} travel style in the ${location} region of India.
 3. Tailor activities to the guest's interests: ${(interests || []).join(', ')}.
 4. Do NOT use any markdown formatting (no *, **, #, ##, -, etc). Use plain text only.
 5. Do NOT include any introductory remarks or closing notes. Start directly with the itinerary.
-6. Make the plan feel exciting, actionable, and locally authentic.`;
+6. Make the plan feel exciting, actionable, and locally authentic.
+7. Include approximate travel times between consecutive activities.`;
 
     return await generateWithFallback(prompt);
   } catch (error) {
