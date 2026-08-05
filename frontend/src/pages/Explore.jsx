@@ -16,6 +16,7 @@ import { fetchHomestays, resolveImageUrl, toggleWishlist, smartSearchHomestays }
 import { HomestayCardSkeleton } from '../components/SkeletonCard'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useToast } from '../context/ToastContext'
+import InteractiveMap from '../components/InteractiveMap'
 import {
   Search,
   SlidersHorizontal,
@@ -64,6 +65,29 @@ export default function Explore() {
   const [priceRange, setPriceRange] = useState(0) // index into PRICE_RANGES
   const [minRating, setMinRating] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Premium Features States
+  const [showMap, setShowMap] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+
+  const handleSuggestionClick = async (text) => {
+    setSearch(text)
+    setIsAiSearch(true)
+    setSearchFocused(false)
+    setAiSearching(true)
+    try {
+      const res = await smartSearchHomestays(text)
+      if (res.success && res.data) {
+        setHomestays(res.data)
+        setAiParsedFilters(res.parsedFilters)
+        showToast('AI analyzed your search query!', 'success')
+      }
+    } catch (err) {
+      showToast('AI Search failed: ' + err.message, 'error')
+    } finally {
+      setAiSearching(false)
+    }
+  }
 
   const handleSmartSearchSubmit = async (e) => {
     e?.preventDefault()
@@ -222,7 +246,7 @@ export default function Explore() {
           </p>
 
           {/* Search Bar */}
-          <div className="mt-8 max-w-2xl mx-auto space-y-3">
+          <div className="mt-8 max-w-2xl mx-auto space-y-3 relative">
             <form onSubmit={isAiSearch ? handleSmartSearchSubmit : (e) => e.preventDefault()} className={`flex items-center gap-2 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-sm transition-all ${isAiSearch ? 'border-amber-400/60 ring-2 ring-amber-400/20' : ''} ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/20'}`}>
               {isAiSearch ? (
                 <Sparkles className="w-5 h-5 text-amber-400 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
@@ -233,6 +257,8 @@ export default function Explore() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
                 placeholder={isAiSearch ? 'Ask AI: e.g. "cozy cottage under ₹3000 in Himachal"' : 'Search by name or location...'}
                 className="flex-1 bg-transparent text-white placeholder-gray-400 text-sm focus:outline-none"
               />
@@ -260,6 +286,33 @@ export default function Explore() {
                 </button>
               )}
             </form>
+
+            {searchFocused && (
+              <div className={`absolute left-0 right-0 mt-1 p-4 rounded-2xl border text-left shadow-2xl z-50 backdrop-blur-md ${darkMode ? 'bg-dark-900/95 border-gray-700 text-gray-200' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  Try Smart AI Search Queries
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {[
+                    'cozy cabin in Manali with high-speed Wi-Fi',
+                    'luxury villa in Goa under ₹5,000 per night',
+                    'homestay in Kerala with lake view',
+                    'budget stay in Jaipur with free breakfast'
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onMouseDown={() => handleSuggestionClick(s)}
+                      className={`text-sm text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${darkMode ? 'hover:bg-white/5 text-gray-300 hover:text-white' : 'hover:bg-gray-50 text-gray-600 hover:text-gray-900'}`}
+                    >
+                      <span className="text-amber-400">⚡</span>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {isAiSearch && (
               <div className="flex items-center justify-between text-xs text-amber-300/80 px-2">
@@ -434,7 +487,7 @@ export default function Explore() {
             </div>
           )}
 
-          {/* Results Grid */}
+          {/* Results Area */}
           {loading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -458,75 +511,105 @@ export default function Explore() {
               </button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredHomestays.map((h) => (
-                <Link
-                  to={`/homestays/${h._id}`}
-                  key={h._id}
-                  className={`group rounded-3xl border overflow-hidden hover:shadow-xl transition-all duration-300 ${darkMode ? 'border-gray-700 bg-dark-800 hover:border-primary-700' : 'border-gray-200 bg-white hover:border-primary-300'}`}
-                >
-                  <div className="aspect-[16/10] overflow-hidden relative">
-                    <img
-                      src={resolveImageUrl(h.image)}
-                      alt={h.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                    {/* Heart wishlist toggle */}
-                    {isAuthenticated && user?.role === 'customer' && (
-                      <button
-                        onClick={(e) => handleToggleWishlist(e, h._id)}
-                        className={`absolute top-3 left-3 p-2 rounded-full border backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-md ${
-                          wishlistSet.has(h._id)
-                            ? 'bg-red-500 border-red-500 text-white hover:bg-red-650'
-                            : 'bg-black/40 border-white/20 text-white hover:bg-black/60'
-                        }`}
-                      >
-                        <Heart className={`w-4 h-4 ${wishlistSet.has(h._id) ? 'fill-current' : ''}`} />
-                      </button>
-                    )}
-                    {/* Price badge */}
-                    <div className="absolute top-3 right-3 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-sm text-white text-xs font-bold">
-                      ₹{h.pricePerNight?.toLocaleString()}/night
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <h3 className={`font-heading font-semibold text-lg group-hover:text-primary-500 transition-colors ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {h.name}
-                    </h3>
-                    <p className={`text-sm mt-1 flex items-center gap-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      <MapPin className="w-3.5 h-3.5" />
-                      {h.location}
-                    </p>
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-1.5">
-                        {renderStars(h.rating)}
-                        <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          ({h.totalReviews})
-                        </span>
+            <div className="flex flex-col lg:flex-row gap-8 items-start relative">
+              {/* Listings column */}
+              <div className={`transition-all duration-300 ${showMap ? 'w-full lg:w-3/5 grid sm:grid-cols-2 gap-6' : 'w-full grid sm:grid-cols-2 lg:grid-cols-3 gap-8'}`}>
+                {filteredHomestays.map((h) => (
+                  <Link
+                    to={`/homestays/${h._id}`}
+                    key={h._id}
+                    className={`group rounded-3xl border overflow-hidden hover:shadow-xl transition-all duration-300 ${darkMode ? 'border-gray-700 bg-dark-800 hover:border-primary-700' : 'border-gray-200 bg-white hover:border-primary-300'}`}
+                  >
+                    <div className="aspect-[16/10] overflow-hidden relative">
+                      <img
+                        src={resolveImageUrl(h.image)}
+                        alt={h.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      {/* Heart wishlist toggle */}
+                      {isAuthenticated && user?.role === 'customer' && (
+                        <button
+                          onClick={(e) => handleToggleWishlist(e, h._id)}
+                          className={`absolute top-3 left-3 p-2 rounded-full border backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-md z-10 ${
+                            wishlistSet.has(h._id)
+                              ? 'bg-red-500 border-red-500 text-white hover:bg-red-650'
+                              : 'bg-black/40 border-white/20 text-white hover:bg-black/60'
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${wishlistSet.has(h._id) ? 'fill-current' : ''}`} />
+                        </button>
+                      )}
+                      {/* Price badge */}
+                      <div className="absolute top-3 right-3 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-sm text-white text-xs font-bold z-10">
+                        ₹{h.pricePerNight?.toLocaleString()}/night
                       </div>
                     </div>
-                    {h.amenities?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {h.amenities.slice(0, 3).map((a) => (
-                          <span key={a} className={`text-[10px] font-medium px-2 py-1 rounded-lg ${darkMode ? 'bg-dark-900 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
-                            {a}
+                    <div className="p-6">
+                      <h3 className={`font-heading font-semibold text-lg group-hover:text-primary-500 transition-colors ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {h.name}
+                      </h3>
+                      <p className={`text-sm mt-1 flex items-center gap-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <MapPin className="w-3.5 h-3.5" />
+                        {h.location}
+                      </p>
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="flex items-center gap-1.5">
+                          {renderStars(h.rating)}
+                          <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            ({h.totalReviews})
                           </span>
-                        ))}
-                        {h.amenities.length > 3 && (
-                          <span className={`text-[10px] font-medium px-2 py-1 rounded-lg ${darkMode ? 'bg-dark-900 text-gray-500' : 'bg-gray-50 text-gray-400'}`}>
-                            +{h.amenities.length - 3} more
-                          </span>
-                        )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
+                      {h.amenities?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {h.amenities.slice(0, 3).map((a) => (
+                            <span key={a} className={`text-[10px] font-medium px-2 py-1 rounded-lg ${darkMode ? 'bg-dark-900 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                              {a}
+                            </span>
+                          ))}
+                          {h.amenities.length > 3 && (
+                            <span className={`text-[10px] font-medium px-2 py-1 rounded-lg ${darkMode ? 'bg-dark-900 text-gray-500' : 'bg-gray-50 text-gray-400'}`}>
+                              +{h.amenities.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Map Column */}
+              {showMap && (
+                <div className="w-full lg:w-2/5 h-[400px] lg:h-[calc(100vh-14rem)] sticky top-24 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300">
+                  <InteractiveMap homestays={filteredHomestays} height="100%" />
+                </div>
+              )}
             </div>
           )}
         </div>
       </section>
+
+      {/* Floating Toggle Button */}
+      {!loading && filteredHomestays.length > 0 && (
+        <button
+          onClick={() => setShowMap(!showMap)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-dark-950 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/10 hover:border-amber-500/50"
+        >
+          {showMap ? (
+            <>
+              <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+              Show List Only
+            </>
+          ) : (
+            <>
+              <MapPin className="w-4 h-4 text-amber-400" />
+              Show Map & Split View
+            </>
+          )}
+        </button>
+      )}
     </>
   )
 }

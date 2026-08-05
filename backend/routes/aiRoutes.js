@@ -10,7 +10,7 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { protect } = require('../middleware/auth');
-const { planTrip } = require('../controllers/aiController');
+const { planTrip, chatGeneral } = require('../controllers/aiController');
 
 // Rate limiter for AI endpoints — 5 requests per 15-minute window per IP
 const aiLimiter = rateLimit({
@@ -26,5 +26,8 @@ const aiLimiter = rateLimit({
 
 // POST /api/ai/trip-planner — Generate personalized travel itinerary
 router.post('/trip-planner', protect, aiLimiter, planTrip);
+
+// POST /api/ai/chat — Chat with the global AI travel concierge bot
+router.post('/chat', protect, aiLimiter, chatGeneral);
 
 module.exports = router;

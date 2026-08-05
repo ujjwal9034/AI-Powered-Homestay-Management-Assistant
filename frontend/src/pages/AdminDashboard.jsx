@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { fetchAdminStats, fetchAllUsers, updateUserRole, deleteUser, fetchAllReviews, fetchHomestays } from '../services/api'
 import { useToast } from '../context/ToastContext'
+import AnalyticsChart from '../components/ui/AnalyticsChart'
 
 export default function AdminDashboard() {
   const { darkMode } = useTheme()
@@ -154,42 +155,24 @@ export default function AdminDashboard() {
           <div className="grid sm:grid-cols-2 gap-6">
             <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               <h3 className={`font-heading font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>User Distribution</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Customers', count: stats.totalCustomers, color: 'bg-blue-500', pct: Math.round((stats.totalCustomers / stats.totalUsers) * 100) || 0 },
-                  { label: 'Owners', count: stats.totalOwners, color: 'bg-green-500', pct: Math.round((stats.totalOwners / stats.totalUsers) * 100) || 0 },
-                  { label: 'Admins', count: stats.totalAdmins, color: 'bg-purple-500', pct: Math.round((stats.totalAdmins / stats.totalUsers) * 100) || 0 },
-                ].map(({ label, count, color, pct }) => (
-                  <div key={label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{label}</span>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{count} ({pct}%)</span>
-                    </div>
-                    <div className={`h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <div className={`h-2 rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AnalyticsChart
+                type="sentiment"
+                data={[
+                  { label: '👥 Customers', value: stats.totalCustomers },
+                  { label: '🏡 Owners', value: stats.totalOwners },
+                  { label: '🛡️ Admins', value: stats.totalAdmins },
+                ]}
+              />
             </div>
             <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
               <h3 className={`font-heading font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Review Status</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Replied', count: stats.repliedReviews, color: 'bg-green-500', pct: stats.totalReviews > 0 ? Math.round((stats.repliedReviews / stats.totalReviews) * 100) : 0 },
-                  { label: 'Pending', count: stats.pendingReviews, color: 'bg-amber-500', pct: stats.totalReviews > 0 ? Math.round((stats.pendingReviews / stats.totalReviews) * 100) : 0 },
-                ].map(({ label, count, color, pct }) => (
-                  <div key={label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{label}</span>
-                      <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{count} ({pct}%)</span>
-                    </div>
-                    <div className={`h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <div className={`h-2 rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AnalyticsChart
+                type="sentiment"
+                data={[
+                  { label: '✅ Replied Reviews', value: stats.repliedReviews },
+                  { label: '⏳ Pending Reviews', value: stats.pendingReviews },
+                ]}
+              />
             </div>
           </div>
         )}

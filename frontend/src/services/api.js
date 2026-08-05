@@ -183,6 +183,11 @@ export const chatWithLocalGuide = async (id, message, history) => {
   return response.data;
 };
 
+export const chatWithGlobalConcierge = async (message, history) => {
+  const response = await api.post('/api/ai/chat', { message, history }, { timeout: 30000 });
+  return response.data;
+};
+
 export const enhanceHomestayDescription = async (data) => {
   const response = await api.post('/api/homestays/enhance', data, { timeout: 30000 });
   return response.data;

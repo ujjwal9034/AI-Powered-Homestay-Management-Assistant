@@ -3,7 +3,7 @@
  * Handles AI-powered features like Trip Planning using Gemini API.
  */
 
-const { generateTripItinerary } = require('../config/gemini');
+const { generateTripItinerary, generateGeneralChatResponse } = require('../config/gemini');
 
 /**
  * POST /api/ai/trip-planner
@@ -49,4 +49,30 @@ const planTrip = async (req, res) => {
   }
 };
 
-module.exports = { planTrip };
+/**
+ * POST /api/ai/chat
+ * Protected — Chat with the global AI concierge bot.
+ */
+const chatGeneral = async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
+    }
+
+    const responseText = await generateGeneralChatResponse(history || [], message.trim());
+    res.status(200).json({
+      success: true,
+      response: responseText,
+    });
+  } catch (error) {
+    console.error('[chatGeneral] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate response. Please try again later.',
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { planTrip, chatGeneral };

@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchHomestayById, createPaymentSession, verifyPayment, resolveImageUrl } from '../services/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useToast } from '../context/ToastContext';
+import DateRangePicker from '../components/ui/DateRangePicker';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -22,7 +23,6 @@ import {
   AlertCircle,
   Sparkles,
   MapPin,
-  Calendar,
   Users,
   Zap,
 } from 'lucide-react';
@@ -37,8 +37,10 @@ export default function Checkout() {
   useDocumentTitle('Payment Gateway — StayWise');
 
   const homestayId = searchParams.get('homestayId');
-  const checkIn = searchParams.get('checkIn');
-  const checkOut = searchParams.get('checkOut');
+  const [bookingCheckIn, setBookingCheckIn] = useState(searchParams.get('checkIn') || '');
+  const [bookingCheckOut, setBookingCheckOut] = useState(searchParams.get('checkOut') || '');
+  const checkIn = bookingCheckIn;
+  const checkOut = bookingCheckOut;
   const guestsCount = Number(searchParams.get('guestsCount') || 1);
 
   const [homestay, setHomestay] = useState(null);
@@ -106,10 +108,12 @@ export default function Checkout() {
     );
   }
 
-  const checkInDate = new Date(checkIn);
-  const checkOutDate = new Date(checkOut);
-  const diffDays = Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
-  const basePrice = diffDays * homestay.pricePerNight;
+  const checkInDate = checkIn ? new Date(checkIn) : null;
+  const checkOutDate = checkOut ? new Date(checkOut) : null;
+  const diffDays = (checkInDate && checkOutDate && !isNaN(checkInDate.getTime()) && !isNaN(checkOutDate.getTime()))
+    ? Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const basePrice = diffDays * (homestay?.pricePerNight || 0);
   const serviceFee = Math.round(basePrice * 0.05);
   const tax = Math.round(basePrice * 0.12);
   const totalPrice = basePrice + serviceFee + tax;
@@ -131,6 +135,11 @@ export default function Checkout() {
     if (!isAuthenticated) {
       showToast('Please sign in to complete your booking', 'error');
       navigate('/login');
+      return;
+    }
+
+    if (!checkIn || !checkOut) {
+      showToast('Please select valid check-in and check-out dates', 'error');
       return;
     }
 
@@ -495,15 +504,20 @@ export default function Checkout() {
               <div className={`p-4 rounded-2xl border space-y-3 text-xs ${
                 darkMode ? 'bg-dark-900 border-gray-700' : 'bg-gray-50 border-gray-200'
               }`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-primary-500" /> Check-In:</span>
-                  <span className="font-bold">{checkInDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5 text-gray-500">
+                    Modify Dates
+                  </label>
+                  <DateRangePicker
+                    startDate={bookingCheckIn}
+                    endDate={bookingCheckOut}
+                    onChange={({ checkIn, checkOut }) => {
+                      setBookingCheckIn(checkIn);
+                      setBookingCheckOut(checkOut);
+                    }}
+                  />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-primary-500" /> Check-Out:</span>
-                  <span className="font-bold">{checkOutDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pt-1">
                   <span className="text-gray-500 flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-primary-500" /> Guests:</span>
                   <span className="font-bold">{guestsCount} guest{guestsCount > 1 ? 's' : ''} ({diffDays} night{diffDays > 1 ? 's' : ''})</span>
                 </div>

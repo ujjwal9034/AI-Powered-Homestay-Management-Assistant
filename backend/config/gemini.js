@@ -188,6 +188,64 @@ Strict guidelines:
 };
 
 /**
+ * Generate a response for the global AI concierge chat.
+ *
+ * @param {Array} chatHistory - Array of past messages: [{ role: 'user'|'model', text: string }]
+ * @param {string} userMessage - Latest message from the user
+ * @returns {Promise<string>} Response text from Gemini
+ */
+const generateGeneralChatResponse = async (chatHistory, userMessage) => {
+  if (!genAI) {
+    return 'Gemini AI key is not configured. Please add GEMINI_API_KEY to your backend .env file.';
+  }
+
+  const models = [MODEL_NAME, FALLBACK_MODEL];
+  let lastError = null;
+
+  for (const modelName of models) {
+    try {
+      const systemInstruction = `You are "StayWise Global AI Concierge", a warm, helpful, and highly knowledgeable travel concierge assistant.
+Your goal is to answer travel planning, tourism, transit, dining, and stay recommendations questions for travelers exploring India.
+
+Strict guidelines:
+1. Provide warm, inviting, and professional local travel tips.
+2. Direct the user to use the "AI Smart Search" mode on the Explore page to find homestays matching their budget and requirements.
+3. Suggest using the "AI Trip Planner" on any homestay details page to build day-by-day itineraries.
+4. Keep answers concise, helpful, and under 4-5 sentences.
+5. Answer questions in the same language they are asked (default to English).`;
+
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: systemInstruction,
+      });
+
+      const formattedHistory = (chatHistory || []).map((msg) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }],
+      }));
+
+      const chat = model.startChat({
+        history: formattedHistory,
+      });
+
+      const result = await withRetry(() => chat.sendMessage(userMessage));
+      return result.response.text().trim();
+    } catch (error) {
+      lastError = error;
+      const is429 = error.message && error.message.includes('429');
+      if (is429 && modelName !== FALLBACK_MODEL) {
+        console.log(`[Gemini AI] Primary model (${modelName}) rate-limited for general chat, trying fallback (${FALLBACK_MODEL})...`);
+        continue;
+      }
+      break;
+    }
+  }
+
+  console.error('[Gemini AI] General chat generation failed:', lastError.message);
+  return 'Sorry, I am having trouble connecting to StayWise concierge services right now.';
+};
+
+/**
  * Generate a professional, highly attractive property description for a homestay listing.
  *
  * @param {string} name - Homestay name
@@ -487,6 +545,7 @@ Return JSON ONLY with this schema:
 module.exports = {
   generateReviewReply,
   generateTouristChatResponse,
+  generateGeneralChatResponse,
   generateEnhancedDescription,
   generateHostInsights,
   generateDynamicPricingRecommendation,

@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { fetchMyHomestays, createHomestay, updateHomestay, deleteHomestay, fetchHomestayReviews, replyToReview, requestReviewSuggestion, enhanceHomestayDescription, fetchOwnerBookings, updateBookingStatus, fetchHostAnalytics, suggestHomestayPrice, draftBookingMessage, uploadImage, resolveImageUrl } from '../services/api'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
+import AnalyticsChart from '../components/ui/AnalyticsChart'
 
 export default function OwnerDashboard() {
   const { darkMode } = useTheme()
@@ -769,38 +770,20 @@ export default function OwnerDashboard() {
 
             {/* Visual Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Earnings Bar Chart */}
+              {/* Earnings Line Chart */}
               <div className={`rounded-2xl border p-6 ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
                 <h3 className={`font-heading font-bold text-sm mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Revenue Over Time 📈
+                  Revenue Trends 📈
                 </h3>
-                
                 {analytics.monthlyRevenue?.length > 0 ? (
-                  <div className="space-y-4">
-                    {/* SVG Chart */}
-                    <div className="h-48 flex items-end justify-around pt-6 pb-2 border-b border-gray-200 dark:border-gray-700">
-                      {analytics.monthlyRevenue.map((item, index) => {
-                        const maxVal = Math.max(...analytics.monthlyRevenue.map(m => m.revenue), 1)
-                        const pct = Math.round((item.revenue / maxVal) * 85) // Cap at 85% height for labels
-                        return (
-                          <div key={index} className="flex flex-col items-center flex-1 group relative">
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-10 px-2 py-1 bg-gray-900 text-white text-[10px] rounded shadow-lg whitespace-nowrap">
-                              ₹{item.revenue?.toLocaleString()}
-                            </div>
-                            {/* Bar */}
-                            <div 
-                              style={{ height: `${Math.max(pct, 6)}%` }}
-                              className="w-8 sm:w-12 bg-primary-500 hover:bg-primary-600 rounded-t-lg transition-all duration-300 shadow-lg shadow-primary-500/10 hover:shadow-primary-500/30 cursor-pointer"
-                            />
-                            {/* Label */}
-                            <span className={`text-[10px] mt-2 font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                              {item.month}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
+                  <div className="h-56">
+                    <AnalyticsChart
+                      type="revenue"
+                      data={analytics.monthlyRevenue.map((m) => ({
+                        label: m.month,
+                        value: m.revenue,
+                      }))}
+                    />
                   </div>
                 ) : (
                   <div className="h-48 flex flex-col items-center justify-center text-center">
@@ -817,57 +800,15 @@ export default function OwnerDashboard() {
                 <h3 className={`font-heading font-bold text-sm mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Guest Sentiment Breakdown 💬
                 </h3>
-
                 {analytics.sentiment?.total > 0 ? (
-                  <div className="space-y-5">
-                    {/* Positive */}
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😊 Positive Sentiment (4-5 ★)</span>
-                        <span className="text-green-500">
-                          {analytics.sentiment.positive} ({Math.round((analytics.sentiment.positive / analytics.sentiment.total) * 100)}%)
-                        </span>
-                      </div>
-                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
-                        <div 
-                          style={{ width: `${(analytics.sentiment.positive / analytics.sentiment.total) * 100}%` }}
-                          className="h-full bg-green-500 rounded-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Neutral */}
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😐 Neutral Sentiment (3 ★)</span>
-                        <span className="text-amber-500">
-                          {analytics.sentiment.neutral} ({Math.round((analytics.sentiment.neutral / analytics.sentiment.total) * 100)}%)
-                        </span>
-                      </div>
-                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
-                        <div 
-                          style={{ width: `${(analytics.sentiment.neutral / analytics.sentiment.total) * 100}%` }}
-                          className="h-full bg-amber-500 rounded-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Negative */}
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                        <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>😟 Critical Sentiment (1-2 ★)</span>
-                        <span className="text-red-500">
-                          {analytics.sentiment.negative} ({Math.round((analytics.sentiment.negative / analytics.sentiment.total) * 100)}%)
-                        </span>
-                      </div>
-                      <div className={`h-2 rounded-full ${darkMode ? 'bg-dark-900' : 'bg-gray-100'}`}>
-                        <div 
-                          style={{ width: `${(analytics.sentiment.negative / analytics.sentiment.total) * 100}%` }}
-                          className="h-full bg-red-500 rounded-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <AnalyticsChart
+                    type="sentiment"
+                    data={[
+                      { label: '😊 Positive Sentiment (4-5 ★)', value: analytics.sentiment.positive || 0 },
+                      { label: '😐 Neutral Sentiment (3 ★)', value: analytics.sentiment.neutral || 0 },
+                      { label: '😟 Critical Sentiment (1-2 ★)', value: analytics.sentiment.negative || 0 }
+                    ]}
+                  />
                 ) : (
                   <div className="h-48 flex flex-col items-center justify-center text-center">
                     <span className="text-2xl mb-2">📊</span>

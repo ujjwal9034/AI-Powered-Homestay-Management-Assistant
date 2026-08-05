@@ -12,6 +12,8 @@ import { useAuth } from '../context/AuthContext'
 import { fetchHomestayById, createReview, deleteReview, chatWithLocalGuide, resolveImageUrl, toggleWishlist, toggleHelpfulVote } from '../services/api'
 import TripPlannerModal from '../components/TripPlannerModal'
 import PaymentModal from '../components/PaymentModal'
+import InteractiveMap from '../components/InteractiveMap'
+import DateRangePicker from '../components/ui/DateRangePicker'
 import useDocumentTitle from '../hooks/useDocumentTitle'
 import { useToast } from '../context/ToastContext'
 import {
@@ -645,41 +647,18 @@ export default function HomestayDetail() {
                 Plan Your Stay 📅
               </h3>
               <form onSubmit={handleCreateBooking} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Check-In
-                    </label>
-                    <input
-                      type="date"
-                      value={bookingCheckIn}
-                      onChange={(e) => setBookingCheckIn(e.target.value)}
-                      required
-                      min={new Date().toISOString().split('T')[0]}
-                      className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
-                        darkMode
-                          ? 'bg-dark-900 border-gray-650 text-gray-200 focus:ring-primary-500/30'
-                          : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-primary-500/20'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Check-Out
-                    </label>
-                    <input
-                      type="date"
-                      value={bookingCheckOut}
-                      onChange={(e) => setBookingCheckOut(e.target.value)}
-                      required
-                      min={bookingCheckIn || new Date().toISOString().split('T')[0]}
-                      className={`w-full rounded-xl border px-3 py-2 text-xs focus:outline-none focus:ring-2 ${
-                        darkMode
-                          ? 'bg-dark-900 border-gray-650 text-gray-200 focus:ring-primary-500/30'
-                          : 'bg-gray-50 border-gray-200 text-gray-800 focus:ring-primary-500/20'
-                      }`}
-                    />
-                  </div>
+                <div>
+                  <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Select Stay Dates
+                  </label>
+                  <DateRangePicker
+                    startDate={bookingCheckIn}
+                    endDate={bookingCheckOut}
+                    onChange={({ checkIn, checkOut }) => {
+                      setBookingCheckIn(checkIn);
+                      setBookingCheckOut(checkOut);
+                    }}
+                  />
                 </div>
 
                 <div>
@@ -785,6 +764,20 @@ export default function HomestayDetail() {
                   </Link>
                 )}
               </form>
+            </div>
+
+            {/* Map Sidebar card */}
+            <div className={`mt-6 rounded-2xl border p-4 shadow-md ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
+              <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                Property Location
+              </h4>
+              <div className="h-44 rounded-xl overflow-hidden">
+                <InteractiveMap homestays={[homestay]} activeHomestayId={homestay._id} height="100%" />
+              </div>
+              <p className={`text-[10px] mt-2 text-center leading-normal ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Located in the beautiful region of {homestay.location}
+              </p>
             </div>
           </div>
         </div>

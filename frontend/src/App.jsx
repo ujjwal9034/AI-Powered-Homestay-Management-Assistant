@@ -24,6 +24,7 @@ import Checkout from './pages/Checkout'
 import PaymentSuccess from './pages/PaymentSuccess'
 import ScrollToTop from './components/ScrollToTop'
 import NotFound from './pages/NotFound'
+import GlobalConcierge from './components/GlobalConcierge'
 
 function App() {
   const { darkMode } = useTheme()
@@ -83,6 +84,7 @@ function App() {
           </Routes>
         </main>
         <Footer />
+        <GlobalConcierge />
       </div>
     </ErrorBoundary>
   )
