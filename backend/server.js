@@ -37,7 +37,18 @@ const PORT = process.env.PORT || 5001;
 // ─── Core Middleware ────────────────────────────────────────────────────────────
 app.use(helmet());                  // Security headers (XSS, CSP, etc.)
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow same-origin requests (no origin header = same domain on Vercel)
+    if (!origin) return callback(null, true);
+    // Allow configured frontend URL
+    const allowed = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (origin === allowed) return callback(null, true);
+    // Allow Vercel preview/production domains
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow localhost for development
+    if (origin.startsWith('http://localhost:')) return callback(null, true);
+    callback(null, false);
+  },
   credentials: true,
 }));
 app.use(express.json());
