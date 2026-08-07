@@ -6,7 +6,7 @@ An AI-powered platform that helps homestay owners manage guest reviews, customer
 
 **Frontend**: [https://staywise-kappa.vercel.app](https://staywise-kappa.vercel.app)
 
-**Backend Health**: [https://staywise-kappa.vercel.app/api/health](https://staywise-kappa.vercel.app/api/health)
+**Backend**: [https://staywise-backend-cnwn.onrender.com](https://staywise-backend-cnwn.onrender.com)
 
 **GitHub Repository**: [https://github.com/ujjwal9034/AI-Powered-Homestay-Management-Assistant](https://github.com/ujjwal9034/AI-Powered-Homestay-Management-Assistant)
 
