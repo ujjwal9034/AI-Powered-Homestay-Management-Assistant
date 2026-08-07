@@ -32,6 +32,7 @@ const messageRoutes = require('./routes/messageRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 
 const app = express();
+app.set('trust proxy', 1); // Trust reverse proxy headers (Vercel, Cloudflare, etc.) to allow rate limiters to run safely
 const PORT = process.env.PORT || 5001;
 
 // ─── Core Middleware ────────────────────────────────────────────────────────────
