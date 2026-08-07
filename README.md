@@ -26,11 +26,7 @@ An AI-powered platform that helps homestay owners manage guest reviews, customer
 
 ## 🎬 Demo Video
 
-> _Demo video will be added here once recorded and uploaded._
-
-<!-- Replace the line above with an embedded link once available:
-[![Watch Demo](https://img.shields.io/badge/Watch-Demo_Video-red?style=for-the-badge&logo=youtube)](YOUR_VIDEO_LINK)
--->
+[![Watch Demo](https://img.shields.io/badge/Watch-Demo_Video-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=GlfvBa0o__w)
 
 ---
 
