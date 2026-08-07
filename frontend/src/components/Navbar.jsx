@@ -29,7 +29,6 @@ const navLinks = [
   { to: '/explore', label: 'Explore', icon: Compass },
   { to: '/about', label: 'About', icon: Info },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, requiresAuth: true },
-  { to: '/inbox', label: 'Inbox', icon: MessageSquare, requiresAuth: true },
 ]
 
 export default function Navbar() {
@@ -132,6 +131,19 @@ export default function Navbar() {
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+
+          {/* Inbox Icon Link (only if logged in) */}
+          {isAuthenticated && (
+            <Link
+              to="/inbox"
+              className={`p-2 rounded-lg transition-colors cursor-pointer relative ${
+                darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-primary-400' : 'text-gray-600 hover:bg-gray-100 hover:text-primary-600'
+              }`}
+              title="Inbox Messages"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </Link>
+          )}
 
           {/* Notification Bell (only if logged in) */}
           {isAuthenticated && (
@@ -256,6 +268,13 @@ export default function Navbar() {
                         <LayoutDashboard className="w-4 h-4" /> Dashboard
                       </Link>
                       <Link
+                        to="/inbox"
+                        onClick={() => setProfileOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <MessageSquare className="w-4 h-4" /> Inbox
+                      </Link>
+                      <Link
                         to="/profile"
                         onClick={() => setProfileOpen(false)}
                         className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
@@ -322,6 +341,28 @@ export default function Navbar() {
               {label}
             </NavLink>
           ))}
+
+          {/* Mobile explicit inbox link */}
+          {isAuthenticated && (
+            <NavLink
+              to="/inbox"
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? darkMode
+                      ? 'bg-primary-900/40 text-primary-400'
+                      : 'bg-primary-50 text-primary-700'
+                    : darkMode
+                    ? 'text-gray-400 hover:bg-gray-800 hover:text-primary-400'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-primary-600'
+                }`
+              }
+            >
+              <MessageSquare className="w-4 h-4" />
+              Inbox
+            </NavLink>
+          )}
 
           {/* Mobile auth section */}
           {isAuthenticated ? (

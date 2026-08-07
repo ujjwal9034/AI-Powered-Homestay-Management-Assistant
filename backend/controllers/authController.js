@@ -9,6 +9,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const crypto = require('crypto');
+const { sendWelcomeEmail, sendResetPasswordEmail } = require('../utils/emailService');
 
 /**
  * Generate a JWT token for a user
@@ -48,6 +49,11 @@ const register = async (req, res) => {
       role: validRole,
       ownerStatus: validRole === 'owner' ? 'pending_approval' : 'none',
     });
+
+    // Send Welcome Email asynchronously
+    sendWelcomeEmail(user).catch((err) =>
+      console.error('[Welcome Email Fail]:', err.message)
+    );
 
     // Generate JWT token
     const token = generateToken(user._id);
@@ -373,25 +379,31 @@ const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: 'If an account exists with this email, a password reset link has been dispatched.',
+        message: 'If an account exists with this email, a password reset code has been dispatched.',
       });
     }
 
-    // Generate raw random reset token
-    const rawToken = crypto.randomBytes(20).toString('hex');
+    // Generate a 6-digit numeric OTP code (2FA)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Hash token and set user fields
-    user.resetPasswordToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    // Hash the OTP and store on user record
+    user.resetPasswordToken = crypto.createHash('sha256').update(otp).digest('hex');
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins expiry
     await user.save();
 
-    const resetUrl = `http://localhost:5173/reset-password/${rawToken}`;
-    console.log(`\n🔑 [PASSWORD RESET LINK REQUESTED]:\nURL: ${resetUrl}\nExpires: 15 minutes\n`);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password/${otp}?email=${encodeURIComponent(user.email)}`;
+    console.log(`\n🔑 [PASSWORD RESET REQUESTED]:\nOTP (2FA Code): ${otp}\nReset URL: ${resetUrl}\nExpires: 15 minutes\n`);
+
+    // Dispatch the email containing the OTP code and direct link
+    sendResetPasswordEmail(user, otp, resetUrl).catch((err) =>
+      console.error('[Reset Email Fail]:', err.message)
+    );
 
     res.status(200).json({
       success: true,
-      message: 'If an account exists with this email, a password reset link has been dispatched.',
-      devToken: rawToken, // For sandbox testing convenience
+      message: 'If an account exists with this email, a password reset code has been dispatched.',
+      devToken: otp, // For sandbox testing convenience
     });
   } catch (error) {
     console.error('[forgotPassword] Error:', error.message);
@@ -405,21 +417,33 @@ const forgotPassword = async (req, res) => {
  */
 const resetPassword = async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password, email, otp } = req.body;
     if (!password || password.length < 6) {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
-    // Hash the raw token to compare it
-    const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    // OTP/Token can be in the request body (otp) or URL parameter (token)
+    const verificationCode = (otp || req.params.token || '').trim();
+    if (!verificationCode) {
+      return res.status(400).json({ success: false, message: 'Verification code (OTP) is required' });
+    }
 
-    const user = await User.findOne({
+    const tokenHash = crypto.createHash('sha256').update(verificationCode).digest('hex');
+
+    const query = {
       resetPasswordToken: tokenHash,
       resetPasswordExpire: { $gt: Date.now() },
-    });
+    };
+
+    // If email is explicitly provided, verify it matches
+    if (email) {
+      query.email = email.toLowerCase().trim();
+    }
+
+    const user = await User.findOne(query);
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired password reset token' });
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification code (2FA OTP)' });
     }
 
     // Set new password

@@ -26,6 +26,7 @@ export default function OwnerDashboard() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('properties')
+  const [bookingFilter, setBookingFilter] = useState('all')
   const { showToast } = useToast()
 
   // AI Description states
@@ -667,152 +668,304 @@ export default function OwnerDashboard() {
         )}
 
         {/* Bookings Tab */}
-        {activeTab === 'bookings' && (
-          <div className="space-y-4">
-            <div className={`rounded-2xl border overflow-hidden ${darkMode ? 'border-gray-700 bg-dark-800' : 'border-gray-200 bg-white'}`}>
-              <div className={`px-6 py-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                <h2 className={`font-heading font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Guest Reservations</h2>
-                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Manage bookings made on your properties</p>
+        {activeTab === 'bookings' && (() => {
+          // Calculate filtered bookings
+          const filteredBookings = bookings.filter((b) => {
+            if (bookingFilter === 'all') return true;
+            if (bookingFilter === 'pending') return b.status === 'pending';
+            if (bookingFilter === 'confirmed') return b.status === 'confirmed' && new Date(b.checkOut) >= new Date();
+            if (bookingFilter === 'completed') return b.status === 'confirmed' && new Date(b.checkOut) < new Date();
+            if (bookingFilter === 'cancelled') return b.status === 'cancelled';
+            return true;
+          });
+
+          const countAll = bookings.length;
+          const countPending = bookings.filter(b => b.status === 'pending').length;
+          const countConfirmed = bookings.filter(b => b.status === 'confirmed' && new Date(b.checkOut) >= new Date()).length;
+          const countCompleted = bookings.filter(b => b.status === 'confirmed' && new Date(b.checkOut) < new Date()).length;
+          const countCancelled = bookings.filter(b => b.status === 'cancelled').length;
+
+          return (
+            <div className="space-y-6">
+              {/* Header and filters card */}
+              <div className={`rounded-2xl border p-6 backdrop-blur-md shadow-sm ${darkMode ? 'border-gray-700 bg-dark-800/80' : 'border-gray-200 bg-white/80'}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100/10">
+                  <div>
+                    <h2 className={`font-heading text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Guest Reservations</h2>
+                    <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Review, verify, and automate messages for your homestay bookings</p>
+                  </div>
+                </div>
+
+                {/* Sub Tab Navigation */}
+                <div className="flex flex-wrap gap-2 pt-4">
+                  {[
+                    { id: 'all', label: 'All Stays', count: countAll },
+                    { id: 'pending', label: 'Awaiting Action', count: countPending },
+                    { id: 'confirmed', label: 'Active / Upcoming', count: countConfirmed },
+                    { id: 'completed', label: 'Completed Stays', count: countCompleted },
+                    { id: 'cancelled', label: 'Cancelled', count: countCancelled },
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setBookingFilter(sub.id)}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                        bookingFilter === sub.id
+                          ? 'bg-primary-500 text-white shadow-md shadow-primary-500/25 scale-[1.02]'
+                          : darkMode
+                          ? 'bg-dark-900 text-gray-400 border border-gray-700/60 hover:text-white hover:bg-gray-800'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200/60 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      {sub.label}
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                        bookingFilter === sub.id
+                          ? 'bg-white/20 text-white'
+                          : darkMode ? 'bg-dark-800 text-gray-500' : 'bg-gray-200 text-gray-400'
+                      }`}>
+                        {sub.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                {bookings.map((booking) => (
-                  <div key={booking._id} className={`p-6 ${darkMode ? 'hover:bg-dark-900/50' : 'hover:bg-gray-50/50'}`}>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-semibold ${darkMode ? 'text-primary-400' : 'text-primary-600'}`}>
-                            🏡 {booking.homestay?.name || 'Property'}
-                          </span>
-                          <span className={`text-xs ${darkMode ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
-                          <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            👤 {booking.customer?.name} ({booking.customer?.email})
-                          </span>
-                        </div>
+              {/* Reservations List */}
+              <div className="space-y-4">
+                {filteredBookings.map((booking) => {
+                  const checkInDate = new Date(booking.checkIn);
+                  const checkOutDate = new Date(booking.checkOut);
+                  const isPast = new Date() > checkOutDate;
+                  const isActiveStay = new Date() >= checkInDate && new Date() <= checkOutDate;
 
-                        <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <div>📅 {new Date(booking.checkIn).toLocaleDateString()} - {new Date(booking.checkOut).toLocaleDateString()}</div>
-                          <div>🌙 {booking.nights} night{booking.nights > 1 ? 's' : ''}</div>
-                          <div>👥 {booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''}</div>
-                          <div className="font-semibold text-primary-500">💰 ₹{booking.totalPrice?.toLocaleString()}</div>
-                        </div>
+                  // Determine sub-status badge
+                  let subStatusBadge = null;
+                  if (booking.status === 'pending') {
+                    subStatusBadge = (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        ⏳ Awaiting Approval
+                      </span>
+                    );
+                  } else if (booking.status === 'confirmed') {
+                    if (isActiveStay) {
+                      subStatusBadge = (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 animate-pulse">
+                          ✨ Active Guest
+                        </span>
+                      );
+                    } else if (isPast) {
+                      subStatusBadge = (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          ✅ Completed Stay
+                        </span>
+                      );
+                    } else {
+                      subStatusBadge = (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                          📅 Upcoming Stay
+                        </span>
+                      );
+                    }
+                  } else if (booking.status === 'cancelled') {
+                    subStatusBadge = (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                        ❌ Cancelled
+                      </span>
+                    );
+                  }
 
-                        <div className="flex flex-wrap items-center gap-3 text-[10px] pt-1">
-                          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                            booking.paymentType === 'deposit'
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/10'
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10'
-                          }`}>
-                            {booking.paymentType === 'deposit' 
-                              ? `Split Deposit Paid: ₹${booking.depositPaid?.toLocaleString()} (Due on arrival: ₹${booking.remainingBalance?.toLocaleString()})`
-                              : `Paid In Full: ₹${booking.totalPrice?.toLocaleString()}`
-                            }
-                          </span>
+                  return (
+                    <div 
+                      key={booking._id} 
+                      className={`rounded-2xl border p-6 transition-all duration-200 hover:scale-[1.005] hover:shadow-md ${
+                        darkMode 
+                          ? 'border-gray-700/60 bg-dark-800/60 hover:bg-dark-800' 
+                          : 'border-gray-200 bg-white hover:shadow-gray-100/50'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        {/* Left Column: Guest info and Homestay Details */}
+                        <div className="flex-1 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            {/* Guest Avatar Card */}
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                {booking.customer?.name?.charAt(0)?.toUpperCase() || 'G'}
+                              </div>
+                              <div>
+                                <h4 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {booking.customer?.name}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{booking.customer?.email}</p>
+                              </div>
+                            </div>
 
-                          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                            booking.escrowStatus === 'released'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10'
-                              : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10'
-                          }`}>
-                            🛡️ Escrow: {booking.escrowStatus === 'released' ? 'Disbursed to your bank' : 'Held by StayWise (Escrow)'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {booking.status === 'confirmed' && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              onClick={() => handleDraftBookingMessage(booking, 'checkin')}
-                              className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-primary-200 text-primary-500 hover:bg-primary-50 dark:border-primary-800/35 dark:text-primary-400 dark:hover:bg-primary-950/20 transition-colors"
-                            >
-                              ✉️ AI Check-in
-                            </button>
-                            <button
-                              onClick={() => handleDraftBookingMessage(booking, 'checkout')}
-                              className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-primary-200 text-amber-500 hover:bg-amber-50 dark:border-amber-800/35 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
-                            >
-                              ✉️ AI Check-out
-                            </button>
+                            {/* Badges Container */}
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                              {subStatusBadge}
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                booking.paymentStatus === 'paid'
+                                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                  : booking.paymentStatus === 'refunded'
+                                  ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                              }`}>
+                                💳 {booking.paymentStatus || 'pending'}
+                              </span>
+                            </div>
                           </div>
-                        )}
 
-                         {booking.status === 'confirmed' ? (
-                           <>
-                             <button
-                               onClick={() => handleStatusChange(booking._id, 'cancelled')}
-                               className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-red-200 text-red-500 hover:bg-red-50 dark:border-red-800/35 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
-                             >
-                               ❌ Cancel
-                             </button>
-                             
-                             {booking.escrowStatus === 'held' && (
-                               (() => {
-                                 const isReleasable = new Date() >= new Date(booking.checkIn);
-                                 return isReleasable ? (
-                                   <button
-                                     onClick={() => handleReleaseEscrow(booking._id)}
-                                     className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-emerald-250 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800/35 dark:text-emerald-400 dark:hover:bg-emerald-950/20 transition-colors"
-                                   >
-                                     🔓 Claim Payout
-                                   </button>
-                                 ) : (
-                                   <button
-                                     disabled
-                                     title="Escrow releases 24h after check-in"
-                                     className="px-3 py-1.5 rounded-lg border text-xs font-semibold border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60"
-                                   >
-                                     🔒 Payout Locked
-                                   </button>
-                                 );
-                               })()
-                             )}
-                           </>
-                         ) : booking.status === 'cancelled' ? (
-                           <button
-                             onClick={() => handleStatusChange(booking._id, 'confirmed')}
-                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/35 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
-                           >
-                             ✅ Reinstate
-                           </button>
-                         ) : (
-                           <span className="text-xs italic text-gray-400">No actions available</span>
-                         )}
+                          {/* Details strip */}
+                          <div className={`p-4 rounded-xl flex flex-wrap gap-x-8 gap-y-3 text-xs ${
+                            darkMode ? 'bg-dark-900/60' : 'bg-gray-50'
+                          }`}>
+                            <div>
+                              <span className="text-gray-400 block mb-0.5">Property booked</span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                🏡 {booking.homestay?.name || 'Deleted Homestay'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block mb-0.5">Timeline</span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                📅 {checkInDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {checkOutDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block mb-0.5">Stay Length</span>
+                              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                🌙 {booking.nights} night{booking.nights > 1 ? 's' : ''} ({booking.guestsCount} guest{booking.guestsCount > 1 ? 's' : ''})
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block mb-0.5">Total Revenue</span>
+                              <span className="font-extrabold text-indigo-500 dark:text-indigo-400">
+                                ₹{booking.totalPrice?.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
 
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          booking.status === 'confirmed'
-                            ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
-                            : darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-650'
-                        }`}>
-                          {booking.status}
-                        </span>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          booking.paymentStatus === 'paid'
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                            : booking.paymentStatus === 'refunded'
-                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                        }`}>
-                          💳 {booking.paymentStatus || 'paid'}
-                        </span>
+                          {/* Escrow and payments alert strip */}
+                          <div className="flex flex-wrap items-center gap-3 text-[10px]">
+                            <span className={`px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
+                              booking.paymentType === 'deposit'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/15'
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
+                            }`}>
+                              {booking.paymentType === 'deposit' 
+                                ? `Split Deposit: ₹${booking.depositPaid?.toLocaleString()} Paid (Due on check-in: ₹${booking.remainingBalance?.toLocaleString()})`
+                                : `Fully Paid: ₹${booking.totalPrice?.toLocaleString()}`
+                              }
+                            </span>
+
+                            <span className={`px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border ${
+                              booking.escrowStatus === 'released'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/15'
+                                : booking.escrowStatus === 'refunded'
+                                ? 'bg-rose-500/10 text-rose-500 border-rose-500/15'
+                                : 'bg-blue-500/10 text-blue-500 border-blue-500/15'
+                            }`}>
+                              🛡️ Escrow Status: {booking.escrowStatus === 'released' ? 'Payout disbursed to your bank' : booking.escrowStatus === 'refunded' ? 'Refunded to guest' : 'Held securely by StayWise'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Right Column: Actions */}
+                        <div className="flex flex-row lg:flex-col items-center justify-end gap-3 flex-wrap lg:min-w-[170px]">
+                          {booking.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusChange(booking._id, 'confirmed')}
+                                className="w-full lg:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer text-center"
+                              >
+                                Approve Booking
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(booking._id, 'cancelled')}
+                                className="w-full lg:w-auto px-4 py-2 rounded-xl border text-xs font-semibold cursor-pointer text-center transition-all duration-200 border-rose-200 text-rose-500 hover:bg-rose-50 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/20"
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+
+                          {booking.status === 'confirmed' && (
+                            <>
+                              {/* AI Automated Messages triggers */}
+                              <div className="flex gap-2 w-full lg:w-auto justify-end">
+                                <button
+                                  onClick={() => handleDraftBookingMessage(booking, 'checkin')}
+                                  title="Draft check-in welcoming instructions with AI"
+                                  className="flex-1 lg:flex-none px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors border-indigo-200 text-indigo-500 hover:bg-indigo-50 dark:border-indigo-800/30 dark:text-indigo-400 dark:hover:bg-indigo-950/20"
+                                >
+                                  🤖 AI Welcome
+                                </button>
+                                <button
+                                  onClick={() => handleDraftBookingMessage(booking, 'checkout')}
+                                  title="Draft checkout instructions with AI"
+                                  className="flex-1 lg:flex-none px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors border-amber-200 text-amber-500 hover:bg-amber-50 dark:border-amber-800/30 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                                >
+                                  🤖 AI Checkout
+                                </button>
+                              </div>
+
+                              {/* Escrow controls */}
+                              {booking.escrowStatus === 'held' && (() => {
+                                const isReleasable = new Date() >= checkInDate;
+                                return isReleasable ? (
+                                  <button
+                                    onClick={() => handleReleaseEscrow(booking._id)}
+                                    className="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer text-center"
+                                  >
+                                    🔓 Claim Payout
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled
+                                    title="Payout becomes claimable once the guest stay begins"
+                                    className="w-full px-4 py-2 rounded-xl border text-xs font-semibold border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60 text-center"
+                                  >
+                                    🔒 Payout Locked
+                                  </button>
+                                );
+                              })()}
+
+                              {/* Cancel stay */}
+                              <button
+                                onClick={() => handleStatusChange(booking._id, 'cancelled')}
+                                className="w-full lg:w-auto px-4 py-2 rounded-xl border text-xs font-semibold cursor-pointer text-center transition-all duration-200 border-red-200 text-red-500 hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20"
+                              >
+                                Cancel Stays
+                              </button>
+                            </>
+                          )}
+
+                          {booking.status === 'cancelled' && (
+                            <button
+                              onClick={() => handleStatusChange(booking._id, 'confirmed')}
+                              className="w-full lg:w-auto px-4 py-2 rounded-xl border text-xs font-semibold cursor-pointer text-center transition-all duration-200 border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800/30 dark:text-green-400 dark:hover:bg-green-950/20"
+                            >
+                              Reinstate Booking
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
-                {bookings.length === 0 && (
-                  <div className="p-8">
+                {filteredBookings.length === 0 && (
+                  <div className="py-8">
                     <EmptyState
                       type="bookings"
-                      title="No Guest Reservations"
-                      description="You don't have any bookings on your properties yet. Ensure your pricing and property photos are up to date!"
+                      title="No matching bookings"
+                      description="There are no reservations in this category matching your selection filter."
                     />
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (
@@ -1035,10 +1188,12 @@ export default function OwnerDashboard() {
                   <div className="h-56">
                     <AnalyticsChart
                       type="revenue"
-                      data={analytics.monthlyRevenue.map((m) => ({
-                        label: m.month,
-                        value: m.revenue,
-                      }))}
+                      data={[...analytics.monthlyRevenue]
+                        .sort((a, b) => new Date(a.month) - new Date(b.month))
+                        .map((m) => ({
+                          label: m.month,
+                          value: m.revenue,
+                        }))}
                     />
                   </div>
                 ) : (

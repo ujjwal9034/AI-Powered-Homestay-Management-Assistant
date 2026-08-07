@@ -1,18 +1,26 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { resetPassword } from '../services/api'
-import { Lock, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Lock, ArrowLeft, CheckCircle2, Eye, EyeOff, Mail, Key } from 'lucide-react'
 
 export default function ResetPassword() {
   const { darkMode } = useTheme()
   const { token } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const emailParam = queryParams.get('email') || ''
+
+  const [email, setEmail] = useState(emailParam)
+  const [otpCode, setOtpCode] = useState(token || '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -30,7 +38,7 @@ export default function ResetPassword() {
     setMessage('')
 
     try {
-      const res = await resetPassword(token, password)
+      const res = await resetPassword(otpCode || token, password, email)
       if (res.success) {
         setMessage(res.message)
         setTimeout(() => {
@@ -44,7 +52,7 @@ export default function ResetPassword() {
     }
   }
 
-  const inputClass = `w-full rounded-xl border pl-11 pr-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
+  const inputClass = `w-full rounded-xl border pl-11 pr-11 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
     darkMode
       ? 'bg-dark-900 border-gray-700 text-gray-100 focus:ring-primary-500/30 focus:border-primary-500'
       : 'bg-gray-50/50 border-gray-200 text-gray-900 focus:ring-primary-500/20 focus:border-primary-400'
@@ -86,19 +94,81 @@ export default function ResetPassword() {
 
             <div className="space-y-1">
               <label className={`text-xs font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className={`text-xs font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                2FA Verification Code (OTP)
+              </label>
+              <div className="relative">
+                <Key className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  required
+                  placeholder="6-digit code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className={inputClass}
+                  maxLength={6}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className={`text-xs font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 New Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="reset-password"
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={inputClass}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-expanded={showPassword}
+                  aria-controls="reset-password"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-250`}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+                </button>
               </div>
+              <span
+                style={{
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  padding: '0',
+                  margin: '-1px',
+                  overflow: 'hidden',
+                  clip: 'rect(0, 0, 0, 0)',
+                  whiteSpace: 'nowrap',
+                  border: '0',
+                }}
+                aria-live="polite"
+              >
+                {showPassword ? 'New password is now visible' : 'New password is now hidden'}
+              </span>
             </div>
 
             <div className="space-y-1">
@@ -108,14 +178,41 @@ export default function ResetPassword() {
               <div className="relative">
                 <Lock className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirm-reset-password"
                   required
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={inputClass}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-expanded={showConfirmPassword}
+                  aria-controls="confirm-reset-password"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-250`}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+                </button>
               </div>
+              <span
+                style={{
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  padding: '0',
+                  margin: '-1px',
+                  overflow: 'hidden',
+                  clip: 'rect(0, 0, 0, 0)',
+                  whiteSpace: 'nowrap',
+                  border: '0',
+                }}
+                aria-live="polite"
+              >
+                {showConfirmPassword ? 'Confirm new password is now visible' : 'Confirm new password is now hidden'}
+              </span>
             </div>
 
             <button

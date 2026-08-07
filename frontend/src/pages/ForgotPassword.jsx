@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       if (res.success) {
         setMessage(res.message)
         if (res.devToken) {
-          setDevResetLink(`/reset-password/${res.devToken}`)
+          setDevResetLink(`/reset-password/${res.devToken}?email=${encodeURIComponent(email)}`)
         }
       }
     } catch (err) {
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
             Forgot Password
           </h2>
           <p className={`mt-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Enter your email to receive a password reset link
+            Enter your email to receive a 2FA password reset verification code & link
           </p>
         </div>
 

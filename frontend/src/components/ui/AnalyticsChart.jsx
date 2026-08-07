@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function AnalyticsChart({ type = 'revenue', data = [], height = 220 }) {
   const { darkMode } = useTheme();
+  const [hoveredIdx, setHoveredIdx] = useState(null);
 
   // Handle empty or missing data gracefully
   if (!data || data.length === 0) {
@@ -25,28 +27,48 @@ export default function AnalyticsChart({ type = 'revenue', data = [], height = 2
 
     // Calculate coordinates
     const points = data.map((d, i) => {
-      const x = paddingX + (i * (svgWidth - 2 * paddingX)) / (data.length - 1);
+      const x = data.length > 1 
+        ? paddingX + (i * (svgWidth - 2 * paddingX)) / (data.length - 1)
+        : svgWidth / 2;
       const val = d.value || 0;
       const y = svgHeight - paddingY - ((val - minVal) * (svgHeight - 2 * paddingY)) / valueRange;
       return { x, y, label: d.label, val };
     });
 
-    // Construct path string for the line
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    // Construct path string for the smooth bezier line
+    let linePath = '';
+    if (points.length > 1) {
+      linePath = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const cp1x = p1.x + (p2.x - p1.x) / 3;
+        const cp1y = p1.y;
+        const cp2x = p2.x - (p2.x - p1.x) / 3;
+        const cp2y = p2.y;
+        linePath += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+      }
+    } else if (points.length === 1) {
+      linePath = `M ${points[0].x - 20} ${points[0].y} L ${points[0].x + 20} ${points[0].y}`;
+    }
 
     // Construct path string for the filled gradient area
-    const areaPath = points.length > 0 
+    const areaPath = points.length > 1 
       ? `${linePath} L ${points[points.length - 1].x} ${svgHeight - paddingY} L ${points[0].x} ${svgHeight - paddingY} Z`
       : '';
 
     return (
-      <div className="w-full h-full font-sans">
+      <div className="relative w-full h-full font-sans">
         <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
           <defs>
             <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#6366f1" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
             </linearGradient>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#6366f1" floodOpacity="0.25" />
+            </filter>
           </defs>
 
           {/* Grid lines */}
@@ -76,6 +98,20 @@ export default function AnalyticsChart({ type = 'revenue', data = [], height = 2
             );
           })}
 
+          {/* Guide Line on Hover */}
+          {hoveredIdx !== null && points[hoveredIdx] && (
+            <line
+              x1={points[hoveredIdx].x}
+              y1={paddingY}
+              x2={points[hoveredIdx].x}
+              y2={svgHeight - paddingY}
+              stroke={darkMode ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.2)'}
+              strokeWidth="1.5"
+              strokeDasharray="4 2"
+              className="pointer-events-none"
+            />
+          )}
+
           {/* Area Path */}
           {areaPath && (
             <path d={areaPath} fill="url(#revenueGrad)" />
@@ -86,8 +122,9 @@ export default function AnalyticsChart({ type = 'revenue', data = [], height = 2
             <path
               d={linePath}
               fill="none"
-              stroke="#4f46e5"
-              strokeWidth="2.5"
+              stroke="#6366f1"
+              strokeWidth="3"
+              filter="url(#glow)"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -95,37 +132,37 @@ export default function AnalyticsChart({ type = 'revenue', data = [], height = 2
 
           {/* Data Nodes */}
           {points.map((p, idx) => (
-            <g key={idx} className="group cursor-pointer">
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r="4.5"
-                fill={darkMode ? '#1f2937' : '#ffffff'}
-                stroke="#4f46e5"
-                strokeWidth="2"
-                className="transition-all duration-150 hover:r-6"
-              />
-              {/* Tooltip on hover */}
-              <rect
-                x={p.x - 40}
-                y={p.y - 30}
-                width="80"
-                height="18"
-                rx="4"
-                fill="#1f2937"
-                className="opacity-0 group-hover:opacity-90 transition-opacity duration-150 pointer-events-none"
-              />
-              <text
-                x={p.x}
-                y={p.y - 18}
-                textAnchor="middle"
-                fill="#ffffff"
-                className="text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none"
-              >
-                ₹{p.val?.toLocaleString()}
-              </text>
-            </g>
+            <circle
+              key={idx}
+              cx={p.x}
+              cy={p.y}
+              r={hoveredIdx === idx ? 6.5 : 4}
+              fill={darkMode ? '#1f2937' : '#ffffff'}
+              stroke="#6366f1"
+              strokeWidth={hoveredIdx === idx ? 3.5 : 2}
+              className="transition-all duration-200 pointer-events-none"
+            />
           ))}
+
+          {/* Invisible interactive hover rects */}
+          {points.map((p, idx) => {
+            const step = points.length > 1 ? (svgWidth - 2 * paddingX) / (points.length - 1) : svgWidth - 2 * paddingX;
+            const startX = points.length > 1 ? p.x - step / 2 : paddingX;
+            const width = points.length > 1 ? step : svgWidth - 2 * paddingX;
+            return (
+              <rect
+                key={`hover-detect-${idx}`}
+                x={startX}
+                y={paddingY}
+                width={width}
+                height={svgHeight - 2 * paddingY}
+                fill="transparent"
+                className="cursor-pointer"
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+              />
+            );
+          })}
 
           {/* X axis labels */}
           {points.map((p, idx) => (
@@ -140,6 +177,30 @@ export default function AnalyticsChart({ type = 'revenue', data = [], height = 2
             </text>
           ))}
         </svg>
+
+        {/* Floating Tooltip Card */}
+        {hoveredIdx !== null && points[hoveredIdx] && (
+          <div
+            className={`absolute z-30 pointer-events-none rounded-xl border p-2.5 shadow-xl backdrop-blur-md transition-all duration-150 ease-out text-left flex flex-col gap-0.5 ${
+              darkMode
+                ? 'bg-dark-900/90 border-gray-700 text-white shadow-black/40'
+                : 'bg-white/90 border-gray-200 text-gray-900 shadow-gray-200/50'
+            }`}
+            style={{
+              left: `${(points[hoveredIdx].x / svgWidth) * 100}%`,
+              top: `${(points[hoveredIdx].y / svgHeight) * 100 - 12}%`,
+              transform: 'translate(-50%, -100%)',
+              minWidth: '100px',
+            }}
+          >
+            <span className={`text-[9px] uppercase font-bold tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {points[hoveredIdx].label}
+            </span>
+            <span className="text-xs font-black text-indigo-500 dark:text-indigo-400">
+              ₹{points[hoveredIdx].val?.toLocaleString()}
+            </span>
+          </div>
+        )}
       </div>
     );
   }

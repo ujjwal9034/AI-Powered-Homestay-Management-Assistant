@@ -316,10 +316,12 @@ const getHostAnalytics = async (req, res) => {
       monthlyMap[monthYear] = (monthlyMap[monthYear] || 0) + b.totalPrice;
     });
 
-    const monthlyRevenue = Object.keys(monthlyMap).map((key) => ({
-      month: key,
-      revenue: monthlyMap[key],
-    }));
+    const monthlyRevenue = Object.keys(monthlyMap)
+      .map((key) => ({
+        month: key,
+        revenue: monthlyMap[key],
+      }))
+      .sort((a, b) => new Date(a.month) - new Date(b.month));
 
     // 2. Gather reviews
     const reviews = await Review.find({ homestay: { $in: homestayIds } });

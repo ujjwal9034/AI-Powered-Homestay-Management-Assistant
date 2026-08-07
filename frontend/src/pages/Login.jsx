@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { getGoogleAuthUrl } from '../services/api'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -22,6 +23,7 @@ export default function Login() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -181,16 +183,43 @@ export default function Login() {
               <label htmlFor="password" className={`block text-sm font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className={inputClass}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className={`${inputClass} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-expanded={showPassword}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-200`}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+                </button>
+              </div>
+              <span
+                style={{
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  padding: '0',
+                  margin: '-1px',
+                  overflow: 'hidden',
+                  clip: 'rect(0, 0, 0, 0)',
+                  whiteSpace: 'nowrap',
+                  border: '0',
+                }}
+                aria-live="polite"
+              >
+                {showPassword ? 'Password is now visible' : 'Password is now hidden'}
+              </span>
             </div>
 
             {!isSignUp && (

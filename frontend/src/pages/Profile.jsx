@@ -24,6 +24,8 @@ import {
   KeyRound,
   CircleCheck,
   CircleX,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 
 export default function Profile() {
@@ -41,6 +43,8 @@ export default function Profile() {
   const [showPasswordChange, setShowPasswordChange] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // UI state
   const [loading, setLoading] = useState(false)
@@ -361,31 +365,89 @@ export default function Profile() {
                           <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             New Password
                           </label>
-                          <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
-                              darkMode ? 'bg-dark-900 border-gray-600 text-white focus:ring-primary-500/30' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
-                            }`}
-                            placeholder="Min 6 chars"
-                            required={showPasswordChange}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              id="profile-new-password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className={`w-full rounded-xl border pl-4 pr-11 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                                darkMode ? 'bg-dark-900 border-gray-600 text-white focus:ring-primary-500/30' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                              }`}
+                              placeholder="Min 6 chars"
+                              required={showPasswordChange}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              aria-expanded={showPassword}
+                              aria-controls="profile-new-password"
+                              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-250`}
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+                            </button>
+                          </div>
+                          <span
+                            style={{
+                              position: 'absolute',
+                              width: '1px',
+                              height: '1px',
+                              padding: '0',
+                              margin: '-1px',
+                              overflow: 'hidden',
+                              clip: 'rect(0, 0, 0, 0)',
+                              whiteSpace: 'nowrap',
+                              border: '0',
+                            }}
+                            aria-live="polite"
+                          >
+                            {showPassword ? 'New password is now visible' : 'New password is now hidden'}
+                          </span>
                         </div>
                         <div>
                           <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             Confirm Password
                           </label>
-                          <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
-                              darkMode ? 'bg-dark-900 border-gray-600 text-white focus:ring-primary-500/30' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
-                            }`}
-                            placeholder="Confirm password"
-                            required={showPasswordChange}
-                          />
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              id="profile-confirm-password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className={`w-full rounded-xl border pl-4 pr-11 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                                darkMode ? 'bg-dark-900 border-gray-600 text-white focus:ring-primary-500/30' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-primary-500/20'
+                              }`}
+                              placeholder="Confirm password"
+                              required={showPasswordChange}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                              aria-expanded={showConfirmPassword}
+                              aria-controls="profile-confirm-password"
+                              className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-250`}
+                            >
+                              {showConfirmPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+                            </button>
+                          </div>
+                          <span
+                            style={{
+                              position: 'absolute',
+                              width: '1px',
+                              height: '1px',
+                              padding: '0',
+                              margin: '-1px',
+                              overflow: 'hidden',
+                              clip: 'rect(0, 0, 0, 0)',
+                              whiteSpace: 'nowrap',
+                              border: '0',
+                            }}
+                            aria-live="polite"
+                          >
+                            {showConfirmPassword ? 'Confirm password is now visible' : 'Confirm password is now hidden'}
+                          </span>
                         </div>
                       </div>
                     )}
