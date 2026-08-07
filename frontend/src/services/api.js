@@ -57,6 +57,11 @@ export const updateProfile = async (profileData) => {
   return response.data;
 };
 
+export const completeOnboarding = async (role) => {
+  const response = await api.put('/api/auth/onboard', { role });
+  return response.data;
+};
+
 export const getGoogleAuthUrl = () => {
   const baseUrl = API_BASE_URL || window.location.origin;
   return `${baseUrl}/api/auth/google`;

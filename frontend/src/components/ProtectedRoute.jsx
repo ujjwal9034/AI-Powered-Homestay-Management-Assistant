@@ -32,6 +32,11 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
+  // Redirect to onboarding if they haven't chosen a role yet
+  if (user?.needsOnboarding && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />
+  }
+
   // Render the protected content
   return children
 }

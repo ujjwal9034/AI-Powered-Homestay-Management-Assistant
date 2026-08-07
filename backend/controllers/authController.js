@@ -66,6 +66,7 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        needsOnboarding: user.needsOnboarding,
         ownerStatus: user.ownerStatus,
         kycDocument: user.kycDocument,
         isBanned: user.isBanned,
@@ -138,6 +139,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        needsOnboarding: user.needsOnboarding,
         avatar: user.avatar,
         ownerStatus: user.ownerStatus,
         kycDocument: user.kycDocument,
@@ -181,6 +183,7 @@ const getMe = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        needsOnboarding: user.needsOnboarding,
         avatar: user.avatar,
         phone: user.phone,
         googleId: user.googleId ? true : false,
@@ -462,6 +465,68 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification, forgotPassword, resetPassword };
+/**
+ * PUT /api/auth/onboard
+ * Complete user onboarding by selecting their role (customer or owner).
+ */
+const completeOnboarding = async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!['customer', 'owner'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role selection. Must be either customer or owner.',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    user.role = role;
+    user.needsOnboarding = false;
+    
+    // Set host verification pending if they choose to list homestays
+    if (role === 'owner') {
+      user.ownerStatus = 'pending_approval';
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Onboarding completed successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        needsOnboarding: user.needsOnboarding,
+        avatar: user.avatar,
+        phone: user.phone,
+        googleId: user.googleId ? true : false,
+        wishlist: user.wishlist || [],
+        ownerStatus: user.ownerStatus,
+        kycDocument: user.kycDocument,
+        isBanned: user.isBanned,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('[completeOnboarding] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during onboarding completion',
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification, forgotPassword, resetPassword, completeOnboarding };
 
 

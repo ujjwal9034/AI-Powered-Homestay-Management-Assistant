@@ -22,6 +22,7 @@ import ResetPassword from './pages/ResetPassword'
 import Inbox from './pages/Inbox'
 import Profile from './pages/Profile'
 import OAuthCallback from './pages/OAuthCallback'
+import Onboarding from './pages/Onboarding'
 import HomestayDetail from './pages/HomestayDetail'
 import Checkout from './pages/Checkout'
 import PaymentSuccess from './pages/PaymentSuccess'
@@ -51,6 +52,14 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/homestays/:id" element={<HomestayDetail />} />
             <Route
               path="/checkout"

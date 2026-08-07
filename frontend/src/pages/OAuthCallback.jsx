@@ -36,6 +36,15 @@ export default function OAuthCallback() {
       const result = await loginWithToken(token)
 
       if (result.success) {
+        try {
+          const freshUser = JSON.parse(localStorage.getItem('staywise-user') || '{}')
+          if (freshUser?.needsOnboarding) {
+            navigate('/onboarding', { replace: true })
+            return
+          }
+        } catch (e) {
+          console.error('[OAuthCallback] Error parsing user:', e.message)
+        }
         navigate('/dashboard', { replace: true })
       } else {
         setError(result.message || 'Authentication failed')

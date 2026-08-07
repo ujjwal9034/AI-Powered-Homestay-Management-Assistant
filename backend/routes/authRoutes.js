@@ -8,7 +8,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
-const { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification, forgotPassword, resetPassword } = require('../controllers/authController');
+const { register, login, logout, getMe, googleCallback, updateProfile, getWishlist, toggleWishlist, requestOwnerVerification, forgotPassword, resetPassword, completeOnboarding } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { registerValidation, loginValidation, validate } = require('../middleware/validators');
@@ -22,6 +22,7 @@ router.post('/reset-password/:token', authLimiter, resetPassword);
 // ─── Protected routes (requires JWT) ────────────────────────────────────────────
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
+router.put('/onboard', protect, completeOnboarding);
 router.put('/profile', protect, updateProfile);
 router.post('/verify-owner', protect, requestOwnerVerification);
 router.get('/wishlist', protect, getWishlist);

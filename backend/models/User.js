@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
       enum: ['customer', 'owner', 'admin'],
       default: 'customer',
     },
+    needsOnboarding: {
+      type: Boolean,
+      default: false,
+    },
     phone: {
       type: String,
       trim: true,
